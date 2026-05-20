@@ -31,23 +31,6 @@ Los usuarios pueden realizar compras desde la web o aplicación móvil y recibir
 - APIs de Inteligencia Artificial
 - OpenFoodFacts API
 
----
-
-## 🥫 API de Productos
-
-Para la gestión y obtención de información de productos se utiliza la API pública de OpenFoodFacts.
-
-🔗 https://openfoodfacts.github.io/openfoodfacts-server/api/
-
-La API permite:
-- Obtener información nutricional
-- Consultar productos mediante código de barras
-- Acceder a imágenes de productos
-- Obtener categorías y marcas
-- Mejorar el catálogo digital del sistema
-
----
-
 ## 🎯 Objetivo del Proyecto
 
 Digitalizar la experiencia de compra en Tiendas Mass mediante una solución tecnológica moderna, rápida e inteligente que permita optimizar tanto la experiencia del cliente como la gestión operativa de la tienda.
