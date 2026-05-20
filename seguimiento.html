@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Seguimiento del Pedido</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="css/massgo.css" rel="stylesheet">
+    <style>
+        body { background: #f5f5f5; min-height: 100vh; }
+        
+        .navbar-seguimiento {
+            display: none; /* reemplazado por navbar.js */
+        }
+
+        .panel-seguimiento {
+            background: var(--amarillo-suave);
+            border: 2px solid var(--amarillo-fuerte);
+            border-radius: 24px; padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.1);
+        }
+
+        /* BARRA DE PROGRESO */
+        .barra-progreso {
+            display: flex; align-items: center; justify-content: space-between;
+            position: relative; margin-bottom: 30px;
+        }
+        .barra-progreso::before {
+            content: '';
+            position: absolute; top: 20px; left: 0; right: 0; height: 4px;
+            background: #e0e0e0; z-index: 0;
+        }
+        .linea-progreso {
+            position: absolute; top: 20px; left: 0; height: 4px;
+            background: linear-gradient(90deg, var(--rosa-fuerte), var(--celeste-fuerte));
+            z-index: 1; transition: width 1s ease;
+        }
+
+        .paso-track {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            z-index: 2; position: relative;
+        }
+        .paso-track .circulo {
+            width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; font-weight: 700; transition: all .5s;
+            border: 3px solid #e0e0e0; background: white; color: #ccc;
+        }
+        .paso-track.completado .circulo { background: var(--amarillo-fuerte); border-color: var(--amarillo-fuerte); color: white; }
+        .paso-track.activo .circulo { background: var(--rosa-fuerte); border-color: var(--rosa-fuerte); color: white; animation: pulseCircle 1.5s infinite; }
+        .paso-track.pendiente .circulo { background: white; border-color: #ddd; color: #ccc; }
+        @keyframes pulseCircle {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(254,12,101,.4); }
+            50%       { box-shadow: 0 0 0 10px rgba(254,12,101,0); }
+        }
+        .paso-track .etiqueta { font-size: .78rem; font-weight: 700; color: #888; text-align: center; }
+        .paso-track.completado .etiqueta, .paso-track.activo .etiqueta { color: var(--texto-oscuro); }
+
+        /* CARD ESTADO */
+        .card-estado {
+            background: white; border-radius: 18px; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px; box-shadow: 0 3px 12px rgba(0,0,0,.06);
+        }
+        .icono-estado {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--rosa-pastel), #ffd6e7);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; flex-shrink: 0;
+        }
+        .repartidor-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--celeste-fuerte), #0ea5e9);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.1rem; flex-shrink: 0;
+        }
+        .btn-llamar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--rosa-fuerte), #ff4d8a);
+            color: white; border: none; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all .3s; font-size: .9rem;
+        }
+        .btn-llamar:hover { transform: scale(1.1); }
+
+        /* AVISO */
+        .aviso-despacho {
+            background: linear-gradient(135deg, var(--rosa-pastel), #ffd6e7);
+            border-radius: 14px; padding: 14px 18px;
+            display: flex; align-items: flex-start; gap: 12px;
+            margin-bottom: 16px; font-size: .88rem;
+        }
+        .aviso-despacho i { color: var(--rosa-fuerte); margin-top: 2px; flex-shrink: 0; }
+        .aviso-despacho strong { color: var(--rosa-fuerte); }
+
+        /* MAPA SIMULADO */
+        .mapa-simulado {
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border-radius: 18px; height: 220px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; margin-bottom: 16px;
+        }
+        .mapa-simulado .mapa-grid {
+            position: absolute; inset: 0;
+            background-image: linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .mapa-simulado .ruta {
+            position: absolute; width: 60%; height: 3px;
+            background: linear-gradient(90deg, var(--rosa-fuerte), var(--celeste-fuerte));
+            border-radius: 3px; top: 50%; left: 20%;
+        }
+        .mapa-simulado .pin-repartidor {
+            position: absolute; font-size: 2rem;
+            animation: moverRepartidor 4s ease-in-out infinite alternate;
+        }
+        @keyframes moverRepartidor {
+            from { left: 22%; top: 45%; }
+            to   { left: 55%; top: 45%; }
+        }
+        .mapa-simulado .pin-destino {
+            position: absolute; right: 18%; top: 38%; font-size: 1.8rem;
+        }
+        .mapa-simulado .etiqueta-mapa {
+            position: absolute; bottom: 12px; left: 12px;
+            background: white; border-radius: 10px; padding: 6px 12px;
+            font-size: .8rem; font-weight: 700; color: var(--texto-oscuro);
+            box-shadow: 0 2px 8px rgba(0,0,0,.1);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .etiqueta-mapa i { color: var(--rosa-fuerte); }
+
+        /* ETA */
+        .eta-badge {
+            background: white; border: 2px solid var(--rosa-fuerte);
+            border-radius: 25px; padding: 8px 18px;
+            font-weight: 700; font-size: .9rem; color: var(--rosa-fuerte);
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* BOTONES FINALES */
+        .btn-detalles {
+            flex: 1; padding: 14px; border-radius: 30px;
+            background: white; border: 2px solid #ddd;
+            font-weight: 700; cursor: pointer; transition: all .3s;
+        }
+        .btn-detalles:hover { border-color: var(--rosa-fuerte); color: var(--rosa-fuerte); }
+        .btn-inicio {
+            flex: 1; padding: 14px; border-radius: 30px;
+            background: var(--texto-oscuro); color: white; border: none;
+            font-weight: 700; cursor: pointer; transition: all .3s;
+        }
+        .btn-inicio:hover { background: #555; }
+
+        /* ── MODAL DETALLES ── */
+        .modal-detalles-content {
+            border: none;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,.18);
+        }
+        .modal-detalles-header {
+            background: linear-gradient(135deg, var(--rosa-fuerte), #ff4d8a);
+            padding: 20px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            background: rgba(255,255,255,.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: white; flex-shrink: 0;
+        }
+        .modal-detalles-titulo {
+            font-weight: 800; font-size: 1.1rem; color: white;
+        }
+        .modal-detalles-sub {
+            font-size: .78rem; color: rgba(255,255,255,.75); font-weight: 600;
+        }
+        .modal-close-btn {
+            background: rgba(255,255,255,.2); border: none;
+            width: 34px; height: 34px; border-radius: 50%;
+            color: white; font-size: .9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .2s; flex-shrink: 0;
+        }
+        .modal-close-btn:hover { background: rgba(255,255,255,.35); }
+
+        .modal-detalles-body {
+            background: var(--fondo-principal);
+            padding: 24px;
+        }
+
+        /* Info rows */
+        .modal-info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px;
+            background: white; border-radius: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 6px rgba(0,0,0,.05);
+        }
+        .modal-info-label {
+            font-size: .78rem; font-weight: 700; color: #888;
+            text-transform: uppercase; letter-spacing: .4px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .modal-info-label i { color: var(--rosa-fuerte); font-size: .85rem; }
+        .modal-info-value {
+            font-weight: 700; font-size: .88rem; color: var(--texto-oscuro);
+            text-align: right; max-width: 55%;
+        }
+        .modal-info-value.numero {
+            background: var(--texto-oscuro); color: white;
+            border-radius: 20px; padding: 4px 12px; font-size: .82rem;
+        }
+        .modal-info-value.metodo {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .metodo-badge-modal {
+            border-radius: 8px; padding: 3px 10px;
+            font-size: .75rem; font-weight: 800; color: white;
+        }
+
+        /* Sección items */
+        .modal-section-title {
+            font-size: .72rem; font-weight: 800; color: #aaa;
+            text-transform: uppercase; letter-spacing: .5px;
+            margin: 16px 0 8px; padding-left: 4px;
+        }
+        .modal-item-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px;
+            background: white; border-radius: 12px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 6px rgba(0,0,0,.05);
+        }
+        .modal-item-cant {
+            background: var(--rosa-fuerte); color: white;
+            border-radius: 6px; padding: 2px 7px;
+            font-size: .75rem; font-weight: 800; margin-right: 8px; flex-shrink: 0;
+        }
+        .modal-item-nombre {
+            font-size: .88rem; font-weight: 600; color: var(--texto-oscuro);
+            flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .modal-item-precio {
+            font-weight: 800; font-size: .88rem; color: var(--texto-oscuro);
+            flex-shrink: 0; margin-left: 8px;
+        }
+
+        /* Totales */
+        .modal-totales {
+            background: white; border-radius: 14px;
+            padding: 14px; margin-top: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,.05);
+        }
+        .modal-total-row {
+            display: flex; justify-content: space-between;
+            font-size: .88rem; color: #666; margin-bottom: 8px;
+        }
+        .modal-total-row.total-final {
+            font-size: 1rem; font-weight: 900;
+            color: var(--texto-oscuro); margin-bottom: 0;
+            padding-top: 10px;
+            border-top: 2px dashed rgba(241,184,27,.5);
+        }
+        .modal-total-row.total-final .precio-final {
+            color: var(--rosa-fuerte); font-size: 1.15rem;
+        }
+
+        /* ── RESPONSIVE MOBILE ── */
+        @media (max-width: 576px) {
+            .container { padding-left: 12px; padding-right: 12px; }
+
+            /* Encabezado */
+            h2 { font-size: 1.35rem !important; }
+            .eta-badge { font-size: .8rem; padding: 6px 12px; }
+
+            /* Panel */
+            .panel-seguimiento { padding: 18px 14px; border-radius: 18px; }
+
+            /* Barra de progreso: círculos más pequeños */
+            .paso-track .circulo { width: 34px; height: 34px; font-size: .82rem; }
+            .paso-track .etiqueta { font-size: .68rem; }
+            .barra-progreso::before { top: 17px; }
+            .linea-progreso { top: 17px; }
+
+            /* Card estado: stack vertical en pantallas muy pequeñas */
+            .card-estado { flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px; }
+            .card-estado > div:last-child { align-self: flex-end; }
+            .icono-estado { width: 42px; height: 42px; font-size: 1.1rem; }
+            #mensajeEstado { font-size: .9rem !important; }
+            #detalleEstado { font-size: .78rem !important; }
+
+            /* Aviso */
+            .aviso-despacho { padding: 10px 12px; font-size: .8rem; border-radius: 10px; }
+
+            /* Mapa */
+            .mapa-simulado { height: 160px; border-radius: 14px; }
+            .etiqueta-mapa { font-size: .72rem; padding: 4px 8px; }
+
+            /* Botones finales */
+            .d-flex.gap-3 { flex-direction: column; gap: 10px !important; }
+            .btn-detalles, .btn-inicio { width: 100%; padding: 13px; font-size: .9rem; }
+
+            /* Modal */
+            .modal-detalles-header { padding: 16px 18px; }
+            .modal-detalles-titulo { font-size: .95rem; }
+            .modal-detalles-body { padding: 16px; }
+            .modal-info-row { padding: 8px 10px; }
+            .modal-info-label { font-size: .72rem; }
+            .modal-info-value { font-size: .82rem; }
+            .modal-item-row { padding: 8px 10px; }
+            .modal-item-nombre { font-size: .82rem; }
+            .modal-totales { padding: 10px 12px; }
+            .modal-total-row { font-size: .82rem; }
+            .modal-total-row.total-final { font-size: .9rem; }
+            .modal-total-row.total-final .precio-final { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR (inyectado por navbar.js) -->
+
+<div class="container py-4" style="max-width: 720px;">
+
+    <!-- Encabezado -->
+    <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:4px;">Seguimiento del pedido</h2>
+            <p class="text-muted mb-0" id="subtituloOrden">Orden #MG-0000000</p>
+        </div>
+        <div class="eta-badge">
+            <i class="fas fa-clock"></i>
+            ETA: <span id="etaTexto">10 - 15 min</span>
+        </div>
+    </div>
+
+    <div class="panel-seguimiento">
+
+        <!-- BARRA DE PROGRESO -->
+        <div class="barra-progreso" id="barraProgreso">
+            <div class="linea-progreso" id="lineaProgreso" style="width:0%;"></div>
+
+            <div class="paso-track completado" id="pasoConfirmado">
+                <div class="circulo"><i class="fas fa-check"></i></div>
+                <span class="etiqueta">Confirmado</span>
+            </div>
+            <div class="paso-track completado" id="pasoPreparando">
+                <div class="circulo"><i class="fas fa-check"></i></div>
+                <span class="etiqueta">Preparando</span>
+            </div>
+            <div class="paso-track activo" id="pasoDespacho">
+                <div class="circulo"><i class="fas fa-bicycle"></i></div>
+                <span class="etiqueta">En despacho</span>
+            </div>
+            <div class="paso-track pendiente" id="pasoEntregado">
+                <div class="circulo"><i class="fas fa-home"></i></div>
+                <span class="etiqueta">Entregado</span>
+            </div>
+        </div>
+
+        <!-- ESTADO ACTUAL -->
+        <div class="card-estado">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icono-estado">📦</div>
+                <div>
+                    <div class="fw-bold" style="font-size:1rem;" id="mensajeEstado">Tu pedido está en camino</div>
+                    <div class="text-muted" style="font-size:.85rem;" id="detalleEstado">El repartidor ha recogido tu orden y se dirige a tu domicilio.</div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="repartidor-avatar"><i class="fas fa-user"></i></div>
+                <div>
+                    <div class="fw-bold" style="font-size:.85rem;" id="nombreRepartidor">Carlos R.</div>
+                    <div style="font-size:.75rem;color:#888;">⭐ 4.9</div>
+                </div>
+                <button class="btn-llamar" onclick="simularLlamada()" title="Llamar al repartidor">
+                    <i class="fas fa-phone"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- AVISO -->
+        <div class="aviso-despacho">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                Importante: Tu pedido ya está en despacho y el repartidor está en ruta.
+                <strong>En esta etapa no es posible modificar ni cancelar la orden.</strong>
+            </div>
+        </div>
+
+        <!-- MAPA SIMULADO -->
+        <div class="mapa-simulado">
+            <div class="mapa-grid"></div>
+            <div class="ruta"></div>
+            <div class="pin-repartidor">🛵</div>
+            <div class="pin-destino">📍</div>
+            <div class="etiqueta-mapa">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="direccionMapa">Cargando dirección...</span>
+            </div>
+        </div>
+
+        <!-- BOTONES -->
+        <div class="d-flex gap-3">
+            <button class="btn-detalles" onclick="mostrarDetalles()">Ver detalles del pedido</button>
+            <button class="btn-inicio" onclick="window.location.href='index.html'">Volver al inicio</button>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLES -->
+    <div class="modal fade" id="modalDetalles" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-detalles-content">
+
+                <!-- Header -->
+                <div class="modal-detalles-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="modal-header-icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-detalles-titulo mb-0">Detalles del Pedido</h5>
+                            <span class="modal-detalles-sub" id="modalNumero">#MG-0000000</span>
+                        </div>
+                    </div>
+                    <button type="button" class="modal-close-btn" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-detalles-body">
+                    <div id="contenidoDetalles"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHATBOT -->
+<div class="chatbot-btn" title="Asistente MassGo"><i class="bi bi-robot"></i></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/massgo.js"></script>
+<script src="js/navbar.js"></script>
+<script>
+    let etaSegundos = 12 * 60; // 12 minutos
+    let pasoActual = 2; // 0=confirmado, 1=preparando, 2=despacho, 3=entregado
+    const pasos = [
+        { id: 'pasoConfirmado',  icono: 'fa-check',    msg: 'Pedido confirmado',    detalle: 'Tu pedido ha sido recibido y confirmado.' },
+        { id: 'pasoPreparando',  icono: 'fa-check',    msg: 'Preparando tu pedido', detalle: 'El equipo de tienda está preparando tus productos.' },
+        { id: 'pasoDespacho',    icono: 'fa-bicycle',  msg: 'Tu pedido está en camino', detalle: 'El repartidor ha recogido tu orden y se dirige a tu domicilio.' },
+        { id: 'pasoEntregado',   icono: 'fa-home',     msg: '¡Pedido entregado!',   detalle: 'Tu pedido fue entregado exitosamente. ¡Buen provecho!' }
+    ];
+
+    function cargarSeguimiento() {
+        const pedidoStr = localStorage.getItem('massgo_pedido');
+        if (!pedidoStr) { window.location.href = 'index.html'; return; }
+        const pedido = JSON.parse(pedidoStr);
+
+        document.getElementById('subtituloOrden').textContent = `Orden ${pedido.numero}`;
+        document.getElementById('direccionMapa').textContent = pedido.direccion || 'Dirección de entrega';
+
+        actualizarBarra();
+        iniciarETA();
+        simularAvancePedido();
+    }
+
+    function actualizarBarra() {
+        const porcentajes = [0, 33, 66, 100];
+        document.getElementById('lineaProgreso').style.width = porcentajes[pasoActual] + '%';
+
+        pasos.forEach((p, i) => {
+            const el = document.getElementById(p.id);
+            el.className = 'paso-track ' + (i < pasoActual ? 'completado' : i === pasoActual ? 'activo' : 'pendiente');
+            const circulo = el.querySelector('.circulo');
+            if (i < pasoActual) circulo.innerHTML = '<i class="fas fa-check"></i>';
+            else if (i === pasoActual) circulo.innerHTML = `<i class="fas ${p.icono}"></i>`;
+            else circulo.innerHTML = `<i class="fas ${p.icono}"></i>`;
+        });
+
+        document.getElementById('mensajeEstado').textContent = pasos[pasoActual].msg;
+        document.getElementById('detalleEstado').textContent = pasos[pasoActual].detalle;
+    }
+
+    function iniciarETA() {
+        const etaEl = document.getElementById('etaTexto');
+        const interval = setInterval(() => {
+            etaSegundos--;
+            if (etaSegundos <= 0) {
+                etaEl.textContent = 'Llegando ahora';
+                clearInterval(interval);
+                return;
+            }
+            const m = Math.floor(etaSegundos / 60);
+            const s = etaSegundos % 60;
+            etaEl.textContent = `${m}:${String(s).padStart(2,'0')} min`;
+        }, 1000);
+    }
+
+    function simularAvancePedido() {
+        // Simula avance automático al paso "Entregado" después de 30 segundos
+        setTimeout(() => {
+            if (pasoActual < 3) {
+                pasoActual = 3;
+                actualizarBarra();
+                document.getElementById('etaTexto').textContent = 'Entregado';
+                mostrarToast('¡Tu pedido fue entregado! 🎉');
+                document.querySelector('.aviso-despacho').style.display = 'none';
+            }
+        }, 30000);
+    }
+
+    function simularLlamada() {
+        mostrarToast('Conectando con Carlos R... 📞');
+    }
+
+    function mostrarDetalles() {
+        const pedidoStr = localStorage.getItem('massgo_pedido');
+        if (!pedidoStr) return;
+        const pedido = JSON.parse(pedidoStr);
+
+        // Actualizar número en el header
+        document.getElementById('modalNumero').textContent = pedido.numero;
+
+        // Badge de método de pago
+        const metodoConfig = {
+            tarjeta: { label: 'Tarjeta',  icon: 'bi bi-credit-card-2-front-fill', color: '#1a1f71' },
+            yape:    { label: 'Yape',     icon: 'bi bi-phone-fill',               color: '#6c2d91' },
+            plin:    { label: 'Plin',     icon: 'bi bi-phone-fill',               color: '#00b4d8' }
+        };
+        const m = metodoConfig[pedido.metodoPago] || { label: pedido.metodoPago, icon: 'bi bi-wallet2', color: '#555' };
+
+        const html = `
+            <!-- Info general -->
+            <div class="modal-info-row">
+                <span class="modal-info-label"><i class="fas fa-hashtag"></i> Número</span>
+                <span class="modal-info-value numero">${pedido.numero}</span>
+            </div>
+            <div class="modal-info-row">
+                <span class="modal-info-label"><i class="fas fa-map-marker-alt"></i> Dirección</span>
+                <span class="modal-info-value">${pedido.direccion}</span>
+            </div>
+            <div class="modal-info-row">
+                <span class="modal-info-label"><i class="fas fa-wallet"></i> Pago</span>
+                <span class="modal-info-value metodo">
+                    <span class="metodo-badge-modal" style="background:${m.color};">
+                        <i class="${m.icon} me-1"></i>${m.label}
+                    </span>
+                </span>
+            </div>
+
+            <!-- Productos -->
+            <div class="modal-section-title"><i class="fas fa-shopping-bag me-1"></i> Productos</div>
+            ${pedido.items.map(i => `
+                <div class="modal-item-row">
+                    <div class="d-flex align-items-center" style="min-width:0;flex:1;">
+                        <span class="modal-item-cant">${i.cantidad}x</span>
+                        <span class="modal-item-nombre">${i.nombre}</span>
+                    </div>
+                    <span class="modal-item-precio">S/ ${(i.precio * i.cantidad).toFixed(2)}</span>
+                </div>
+            `).join('')}
+
+            <!-- Totales -->
+            <div class="modal-totales">
+                <div class="modal-total-row">
+                    <span>Subtotal</span>
+                    <span>S/ ${pedido.subtotal.toFixed(2)}</span>
+                </div>
+                <div class="modal-total-row">
+                    <span><i class="fas fa-motorcycle me-1" style="color:var(--rosa-fuerte);"></i> Envío</span>
+                    <span>S/ ${pedido.envio.toFixed(2)}</span>
+                </div>
+                <div class="modal-total-row total-final">
+                    <span>Total pagado</span>
+                    <span class="precio-final">S/ ${pedido.total.toFixed(2)}</span>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('contenidoDetalles').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('modalDetalles')).show();
+    }
+
+    cargarSeguimiento();
+</script>
+</body>
+</html>
