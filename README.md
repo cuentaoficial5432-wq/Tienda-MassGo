@@ -1,6 +1,6 @@
 # 🛒 MassGo — Supermercado de Barrio en tu Bolsillo
 
-MassGo es una plataforma de quick commerce hiperlocal desarrollada para la transformación digital de Tiendas Mass (sede San Isidro, Trujillo - Perú). El proyecto busca combinar la experiencia del supermercado de barrio con la velocidad y comodidad del comercio electrónico moderno.
+MassGo es una plataforma de quick commerce hiperlocal desarrollada para la transformación digital de Tiendas Mass. El proyecto busca combinar la experiencia del supermercado de barrio con la velocidad y comodidad del comercio electrónico moderno.
 
 Los usuarios pueden realizar compras desde la web o aplicación móvil y recibir sus productos en menos de 30 minutos, manteniendo los mismos precios de tienda física y ofreciendo una experiencia personalizada mediante Inteligencia Artificial.
 
