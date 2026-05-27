@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Detalle de Producto</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="MASSGO">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <meta property="og:title" content="MASSGO - Supermercado de Barrio en tu Bolsillo">
+    <meta property="og:description" content="Compra desde tu celular y recibe en menos de 30 minutos.">
+    <meta property="og:image" content="img/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="css/massgo.css" rel="stylesheet">
+    <link href="css/chatbot.css" rel="stylesheet">
+    <style>
+        .breadcrumb-massgo { padding: 12px 0; font-size: .9rem; }
+        .breadcrumb-massgo a { color: var(--rosa-fuerte); text-decoration: none; font-weight: 600; }
+        .breadcrumb-massgo span { color: #888; }
+
+        .panel-imagen {
+            background: white;
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 5px 25px rgba(0,0,0,.08);
+            position: relative;
+            min-height: 380px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .panel-imagen img { max-height: 300px; max-width: 100%; object-fit: contain; }
+        .badge-mas-vendido {
+            position: absolute; top: 16px; left: 16px;
+            background: linear-gradient(135deg, var(--rosa-fuerte), #ff4d8a);
+            color: white; font-weight: 700; padding: 6px 16px;
+            border-radius: 20px; font-size: .85rem;
+        }
+        .btn-favorito {
+            position: absolute; top: 16px; right: 16px;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: white; border: 2px solid #eee;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all .3s; font-size: 1.1rem; color: #ccc;
+        }
+        .btn-favorito.activo { color: var(--rosa-fuerte); border-color: var(--rosa-fuerte); }
+        .btn-favorito:hover { transform: scale(1.1); }
+
+        .panel-info {
+            background: linear-gradient(135deg, var(--rosa-pastel), #ffd6e7);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 5px 25px rgba(254,12,101,.1);
+        }
+        .rating-badge { color: var(--amarillo-fuerte); font-weight: 700; font-size: 1rem; }
+        .precio-grande { font-size: 2.4rem; font-weight: 900; color: var(--rosa-fuerte); }
+        .precio-tachado { font-size: 1.1rem; color: #999; text-decoration: line-through; margin-left: 10px; }
+        .stock-badge {
+            background: var(--amarillo-fuerte); color: var(--texto-oscuro);
+            font-weight: 700; padding: 5px 14px; border-radius: 20px; font-size: .85rem;
+        }
+        .stock-badge.sin-stock { background: #ff5252; color: white; }
+
+        .control-cantidad {
+            display: flex; align-items: center; gap: 0;
+            background: white; border-radius: 30px;
+            border: 2px solid #eee; overflow: hidden;
+            width: fit-content;
+        }
+        .control-cantidad button {
+            width: 40px; height: 40px; border: none; background: transparent;
+            font-size: 1.1rem; font-weight: 700; cursor: pointer;
+            color: var(--texto-oscuro); transition: background .2s;
+        }
+        .control-cantidad button:hover { background: var(--rosa-pastel); }
+        .control-cantidad span {
+            min-width: 40px; text-align: center; font-weight: 700; font-size: 1.1rem;
+        }
+
+        .seccion-complementos { padding: 30px 0; }
+        .card-complemento {
+            background: linear-gradient(135deg, var(--celeste-claro), #b2ebf2);
+            border-radius: 20px; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,.08);
+            transition: all .3s; cursor: pointer; border: 2px solid transparent;
+        }
+        .card-complemento:hover { transform: translateY(-5px); border-color: var(--celeste-fuerte); }
+        .card-complemento .img-comp {
+            height: 130px; display: flex; align-items: center; justify-content: center; padding: 10px;
+        }
+        .card-complemento .img-comp img { max-height: 110px; max-width: 100%; object-fit: contain; }
+        .card-complemento .info-comp { padding: 12px; }
+        .card-complemento .nombre-comp { font-weight: 700; font-size: .9rem; color: var(--texto-oscuro); margin-bottom: 4px; }
+        .card-complemento .precio-comp { font-weight: 800; color: var(--rosa-fuerte); font-size: 1.1rem; }
+        .btn-comp-agregar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--rosa-fuerte); color: white; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .9rem; cursor: pointer; transition: all .3s;
+            flex-shrink: 0;
+        }
+        .btn-comp-agregar:hover { transform: scale(1.15); background: #e00a5a; }
+
+        /* ── RESPONSIVE MOBILE ── */
+        @media (max-width: 576px) {
+            .breadcrumb-massgo { font-size: .78rem; padding: 8px 0; }
+
+            /* Panel imagen: menos alto en mobile */
+            .panel-imagen { min-height: 240px; padding: 20px; border-radius: 18px; }
+            .panel-imagen img { max-height: 200px; }
+
+            /* Panel info */
+            .panel-info { padding: 20px 16px; border-radius: 18px; }
+            .precio-grande { font-size: 1.8rem; }
+            .precio-tachado { font-size: .95rem; }
+            #nombreProducto { font-size: 1.4rem !important; }
+
+            /* Control cantidad + botón: stack en mobile */
+            .d-flex.align-items-center.gap-3.flex-wrap { gap: 10px !important; }
+            .control-cantidad button { width: 44px; height: 44px; }
+            .btn-massgo-primary.flex-grow-1 { padding: 13px 18px; font-size: .92rem; }
+
+            /* Complementos */
+            .seccion-complementos { padding: 16px 0; }
+            .card-complemento .img-comp { height: 100px; }
+            .card-complemento .nombre-comp { font-size: .8rem; }
+            .card-complemento .precio-comp { font-size: .95rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="alerta-massgo" id="alertaCarrito"></div>
+
+
+
+<div class="container py-3">
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb-massgo">
+        <a href="index.html">Inicio</a>
+        <span class="mx-2">›</span>
+        <span id="breadCat">Categoría</span>
+        <span class="mx-2">›</span>
+        <strong id="breadNombre">Producto</strong>
+    </div>
+
+    <!-- DETALLE -->
+    <div class="row g-4 mb-4">
+        <!-- Imagen -->
+        <div class="col-md-5">
+            <div class="panel-imagen">
+                <span class="badge-mas-vendido d-none" id="badgeMasVendido">
+                    <i class="fas fa-fire me-1"></i> MÁS VENDIDO
+                </span>
+                <div class="btn-favorito" id="btnFavorito" onclick="toggleFavorito()">
+                    <i class="far fa-heart"></i>
+                </div>
+                <img id="imgProducto" src="" alt="Producto">
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="col-md-7">
+            <div class="panel-info">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="rating-badge" id="ratingStars"></span>
+                    <span class="text-muted" id="ratingNum" style="font-size:.9rem;"></span>
+                </div>
+                <h1 id="nombreProducto" style="font-size:2rem;font-weight:900;color:var(--texto-oscuro);line-height:1.2;margin-bottom:8px;"></h1>
+                <p id="subtituloProducto" class="text-muted mb-3" style="font-size:.95rem;"></p>
+
+                <div class="d-flex align-items-baseline mb-3">
+                    <span class="precio-grande" id="precioProducto"></span>
+                    <span class="precio-tachado" id="precioAntiguo"></span>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Descripción</strong>
+                    <p id="descripcionProducto" class="mt-1 mb-0" style="font-size:.95rem;line-height:1.6;"></p>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded-3" style="background:rgba(255,255,255,.6);">
+                    <span style="font-size:.9rem;"><i class="fas fa-clock me-1" style="color:var(--rosa-fuerte);"></i> Disponibilidad</span>
+                    <span class="ms-auto stock-badge" id="stockBadge"></span>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="control-cantidad">
+                        <button onclick="cambiarCantidadLocal(-1)">−</button>
+                        <span id="cantidadLocal">1</span>
+                        <button onclick="cambiarCantidadLocal(1)">+</button>
+                    </div>
+                    <button class="btn-massgo-primary flex-grow-1" id="btnAgregar" onclick="agregarDesdeDetalle()">
+                        <i class="fas fa-shopping-cart"></i> Añadir al carrito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPLEMENTOS -->
+    <div class="seccion-complementos">
+        <h3 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">
+            Combina perfectamente con <span style="font-size:1.2rem;">✨</span>
+        </h3>
+        <div class="row g-3" id="gridComplementos"></div>
+    </div>
+</div>
+
+<!-- CHATBOT -->
+<div class="chatbot-btn" title="Asistente MassGo"><i class="bi bi-robot"></i></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/massgo.js"></script>
+<script src="js/api.js"></script>
+<script src="js/navbar.js"></script>
+<script>
+    let cantidadLocal = 1;
+    let productoActual = null;
+    let favorito = false;
+
+    function getIdFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        return parseInt(params.get('id')) || 1;
+    }
+
+    function renderEstrellas(rating) {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            if (rating >= i)            html += '<i class="fas fa-star"></i>';
+            else if (rating >= i - 0.5) html += '<i class="fas fa-star-half-alt"></i>';
+            else                        html += '<i class="far fa-star"></i>';
+        }
+        return html;
+    }
+
+    function cargarProducto() {
+        const id = getIdFromURL();
+        const p  = buscarProductoPorId(id);
+        if (!p) { window.location.href = 'index.html'; return; }
+        productoActual = p;
+
+        document.title = `MASSGO - ${p.nombre}`;
+        document.getElementById('breadCat').textContent    = p.categoria;
+        document.getElementById('breadNombre').textContent = p.nombre;
+        document.getElementById('imgProducto').src         = p.imagen;
+        document.getElementById('imgProducto').alt         = p.nombre;
+        document.getElementById('nombreProducto').textContent    = p.nombre;
+        document.getElementById('subtituloProducto').textContent = p.categoria + ' · ' + (p.stock > 0 ? 'Disponible' : 'Sin stock');
+        document.getElementById('descripcionProducto').textContent = p.descripcion;
+        document.getElementById('precioProducto').textContent = `S/ ${p.precio.toFixed(2)}`;
+
+        const stockEl = document.getElementById('stockBadge');
+        if (p.stock === 0) {
+            stockEl.textContent = 'Sin stock';
+            stockEl.classList.add('sin-stock');
+            document.getElementById('btnAgregar').disabled = true;
+            document.getElementById('btnAgregar').style.background = '#ccc';
+        } else {
+            stockEl.textContent = `${p.stock} en stock`;
+        }
+
+        cargarComplementos(id);
+    }
+
+    function cargarComplementos(productoId) {
+        const grid = document.getElementById('gridComplementos');
+        if (!window.productos) return;
+        const p = window.productos.find(x => x.id === productoId);
+        if (!p) return;
+        const mismos = window.productos.filter(x => x.categoria === p.categoria && x.id !== p.id).slice(0, 4);
+        if (mismos.length === 0) {
+            grid.innerHTML = '<p class="text-muted">No hay complementos disponibles.</p>';
+            return;
+        }
+        grid.innerHTML = mismos.map(x => `
+            <div class="col-6 col-md-3">
+                <div class="card-complemento" onclick="window.location.href='producto.html?id=${x.id}'">
+                    <div class="img-comp">
+                        <img src="${x.imagen}" alt="${x.nombre}" loading="lazy"
+                             onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop'">
+                    </div>
+                    <div class="info-comp d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="nombre-comp">${x.nombre}</div>
+                            <div class="precio-comp">S/ ${x.precio.toFixed(2)}</div>
+                        </div>
+                        <button class="btn-comp-agregar" onclick="event.stopPropagation(); agregarAlCarrito(${x.id})">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function cambiarCantidadLocal(delta) {
+        cantidadLocal = Math.max(1, cantidadLocal + delta);
+        document.getElementById('cantidadLocal').textContent = cantidadLocal;
+    }
+
+    function agregarDesdeDetalle() {
+        if (!productoActual) return;
+        agregarAlCarrito(productoActual.id, cantidadLocal);
+    }
+
+    function toggleFavorito() {
+        favorito = !favorito;
+        const btn = document.getElementById('btnFavorito');
+        btn.innerHTML = favorito ? '<i class="fas fa-heart"></i>' : '<i class="far fa-heart"></i>';
+        btn.classList.toggle('activo', favorito);
+        mostrarToast(favorito ? 'Agregado a favoritos ❤️' : 'Eliminado de favoritos');
+    }
+
+    if (window.productos && window.productos.length > 0) {
+        cargarProducto();
+    } else {
+        fetchProductos().then(() => cargarProducto());
+    }
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

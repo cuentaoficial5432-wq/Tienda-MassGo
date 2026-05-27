@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Dashboard Administrativo</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="MASSGO Admin">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <meta property="og:title" content="MASSGO - Dashboard Administrativo">
+    <meta property="og:description" content="Panel de administración del supermercado MassGo">
+    <meta property="og:image" content="img/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="css/dashboard.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dash-layout">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="dash-sidebar" id="dashSidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <img src="img/apple-touch-icon.png" alt="MASSGO" style="width:32px;height:32px;border-radius:8px;">
+                </div>
+                <span class="brand-text">MASSGO</span>
+                <span class="brand-badge">Admin</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard" onclick="showView('dashboard');return false;">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-view="productos" onclick="showView('productos');return false;">
+                    <i class="bi bi-box-seam-fill"></i>
+                    <span>Productos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="pedidos" onclick="showView('pedidos');return false;">
+                    <i class="bi bi-truck"></i>
+                    <span>Pedidos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="usuarios" onclick="showView('usuarios');return false;">
+                    <i class="bi bi-people-fill"></i>
+                    <span>Usuarios</span>
+                </a>
+                <a href="#" class="nav-item" data-view="categorias" onclick="showView('categorias');return false;">
+                    <i class="bi bi-tags-fill"></i>
+                    <span>Categorías</span>
+                </a>
+                <a href="#" class="nav-item" data-view="comprobantes" onclick="showView('comprobantes');return false;">
+                    <i class="bi bi-receipt-cutoff"></i>
+                    <span>Comprobantes</span>
+                </a>
+                <a href="#" class="nav-item" data-view="whatsapp" onclick="showView('whatsapp');return false;">
+                    <i class="bi bi-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-profile">
+                <div class="profile-avatar">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="profile-info">
+                    <span class="profile-name">Admin MassGo</span>
+                    <span class="profile-role">Administrador</span>
+                </div>
+                <a href="/login.html" class="profile-logout" title="Cerrar sesión">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="dash-main">
+
+            <!-- Top Bar -->
+            <header class="dash-topbar">
+                <button class="sidebar-toggle d-lg-none" id="sidebarToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="topbar-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Buscar en el panel..." id="globalSearch">
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn-notif" title="Notificaciones">
+                        <i class="bi bi-bell-fill"></i>
+                        <span class="notif-dot"></span>
+                    </button>
+                    <div class="topbar-user">
+                        <div class="user-avatar">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div class="user-info">
+                            <span class="user-name">Admin MassGo</span>
+                            <span class="user-role">Administrador</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ===== VIEW: DASHBOARD ===== -->
+            <section class="dash-view active" id="view-dashboard">
+
+                <!-- Pill Buttons -->
+                <div class="pill-group">
+                    <button class="pill-btn pill-primary" onclick="showView('productos')">
+                        <i class="bi bi-plus-lg"></i> Nuevo Producto
+                    </button>
+                    <button class="pill-btn pill-cyan" onclick="showView('pedidos')">
+                        <i class="bi bi-truck"></i> Gestionar Envíos
+                    </button>
+                    <button class="pill-btn pill-light" onclick="showView('usuarios')">
+                        <i class="bi bi-people"></i> Ver Usuarios
+                    </button>
+                </div>
+
+                <!-- Metric Cards -->
+                <div class="metrics-row" id="dashboardMetricas">
+                    <div class="metric-card metric-yellow">
+                        <div class="metric-icon" style="background:#FFF3E0;color:#FF6B35;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div class="metric-body">
+                            <span class="metric-label">Pedidos Pendientes</span>
+                            <span class="metric-value" id="metrica-pendientes">--</span>
+                            <span class="metric-trend trend-down">
+                                <i class="bi bi-arrow-down-short"></i> Requieren atención
+                            </span>
+                        </div>
+                    </div>
+                    <div class="metric-card metric-cyan">
+                        <div class="metric-icon">
+                            <i class="bi bi-cart-check-fill"></i>
+                        </div>
+                        <div class="metric-body">
+                            <span class="metric-label">Total Pedidos</span>
+                            <span class="metric-value" id="metrica-pedidos">--</span>
+                            <span class="metric-trend trend-up">
+                                <i class="bi bi-arrow-up-short"></i> +8.3%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="metric-card metric-white">
+                        <div class="metric-icon" style="background:#FFE6EE;color:#FF0066;">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div class="metric-body">
+                            <span class="metric-label">Usuarios Activos</span>
+                            <span class="metric-value" id="metrica-usuarios">--</span>
+                            <span class="metric-trend trend-up">
+                                <i class="bi bi-arrow-up-short"></i> +3.2%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Grid -->
+                <div class="dashboard-grid-2col">
+                    <!-- Recent Orders -->
+                    <div class="dash-card">
+                        <div class="card-header-simple">
+                            <h5><i class="bi bi-clock-history"></i> Pedidos Recientes</h5>
+                            <a href="#" onclick="showView('pedidos')" class="card-link">Ver todos</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table-dash">
+                                <thead>
+                                    <tr>
+                                        <th>Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboardPedidosBody">
+                                    <tr><td colspan="4" class="text-center py-3 text-muted">Cargando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Stock Alerts -->
+                    <div class="dash-card">
+                        <div class="card-header-simple">
+                            <h5><i class="bi bi-exclamation-triangle-fill" style="color:#FCD400;"></i> Alertas de Stock</h5>
+                        </div>
+                        <div class="stock-alerts-list" id="dashboardAlertasStock">
+                            <div class="text-center py-3 text-muted">Cargando...</div>
+                        </div>
+                        <button class="btn-stock-full" onclick="showView('productos')">
+                            <i class="bi bi-box-seam me-2"></i> Ver todo el inventario
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== VIEW: PRODUCTOS ===== -->
+            <section class="dash-view" id="view-productos">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">GESTIÓN DE PRODUCTOS</h2>
+                        <p class="section-desc">Administra el inventario, precios y stock</p>
+                    </div>
+                    <button class="btn-new-product" onclick="abrirModalProducto()">
+                        <i class="bi bi-plus-lg"></i> Nuevo Producto
+                    </button>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar por nombre, SKU o categoría..." id="searchProductos">
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-tags"></i>
+                        <select id="filterCategoriaProducto">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <select id="filterStockProducto">
+                            <option value="">Todos los stocks</option>
+                            <option value="bajo">Stock Bajo</option>
+                            <option value="agotado">Agotado</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="productos-header-row">
+                        <span class="prod-h-col prod-h-col--img">Producto</span>
+                        <span class="prod-h-col prod-h-col--nombre">Nombre</span>
+                        <span class="prod-h-col prod-h-col--precio">Precio</span>
+                        <span class="prod-h-col prod-h-col--stock">Stock</span>
+                        <span class="prod-h-col prod-h-col--estado">Estado</span>
+                        <span class="prod-h-col prod-h-col--detalle">Detalle</span>
+                        <span class="prod-h-col prod-h-col--accion">Acción</span>
+                    </div>
+                    <div class="productos-cards" id="productosList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="productos-pagination" id="paginacionProductos">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ===== VIEW: PEDIDOS ===== -->
+            <section class="dash-view" id="view-pedidos">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">GESTIÓN DE PEDIDOS</h2>
+                        <p class="section-desc">Visualiza, filtra y actualiza el estado de los pedidos</p>
+                    </div>
+                    <button class="btn-export" onclick="exportarCSV()">
+                        <i class="bi bi-download me-1"></i> Exportar CSV
+                    </button>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar por #ID, cliente o producto..." id="searchPedidos">
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-funnel"></i>
+                        <select id="filterEstadoPedido">
+                            <option value="">Todos los estados</option>
+                            <option value="Preparando">Preparando</option>
+                            <option value="En despacho">En despacho</option>
+                            <option value="Entregado">Entregado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-calendar3"></i>
+                        <select id="filterFechaPedido">
+                            <option value="">Todas las fechas</option>
+                            <option value="today">Hoy</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="pedidos-header-row" id="pedidosHeaderRow">
+                        <span class="ph-col ph-col--id">Pedido</span>
+                        <span class="ph-col ph-col--cliente">Cliente</span>
+                        <span class="ph-col ph-col--productos">Productos</span>
+                        <span class="ph-col ph-col--total">Total</span>
+                        <span class="ph-col ph-col--fecha">Fecha</span>
+                        <span class="ph-col ph-col--estado">Estado</span>
+                        <span class="ph-col ph-col--detalle">Detalle</span>
+                        <span class="ph-col ph-col--accion">Acción</span>
+                    </div>
+                    <div class="pedidos-cards" id="pedidosBody">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="pedidos-pagination" id="paginacionPedidos">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ===== VIEW: USUARIOS ===== -->
+            <section class="dash-view" id="view-usuarios">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">GESTIÓN DE USUARIOS</h2>
+                        <p class="section-desc">Administra los usuarios registrados, sus roles y actividad</p>
+                    </div>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar por nombre, username o email..." id="searchUsuarios">
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-funnel"></i>
+                        <select id="filterEstadoUsuario">
+                            <option value="">Todos los estados</option>
+                            <option value="Activo">Activo</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-shield"></i>
+                        <select id="filterRolUsuario">
+                            <option value="">Todos los roles</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="usuarios-header-row">
+                        <span class="uh-col uh-col--user">Usuario</span>
+                        <span class="uh-col uh-col--email">Email</span>
+                        <span class="uh-col uh-col--roles">Roles</span>
+                        <span class="uh-col uh-col--pedidos">Pedidos</span>
+                        <span class="uh-col uh-col--gasto">Total Gasto</span>
+                        <span class="uh-col uh-col--registro">Registro</span>
+                        <span class="uh-col uh-col--estado">Estado</span>
+                        <span class="uh-col uh-col--detalle">Detalle</span>
+                    </div>
+                    <div class="usuarios-cards" id="usuariosBody">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="usuarios-pagination" id="paginacionUsuarios">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ===== VIEW: CATEGORÍAS ===== -->
+            <section class="dash-view" id="view-categorias">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">GESTIÓN DE CATEGORÍAS</h2>
+                        <p class="section-desc">Administra las categorías de productos</p>
+                    </div>
+                    <button class="btn-new-product" onclick="abrirModalCategoria()">
+                        <i class="bi bi-plus-lg"></i> Nueva Categoría
+                    </button>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar categoría..." id="searchCategorias">
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="productos-header-row">
+                        <span class="prod-h-col prod-h-col--img" style="width:60px;">ID</span>
+                        <span class="prod-h-col prod-h-col--nombre" style="flex:1;">Nombre</span>
+                        <span class="prod-h-col prod-h-col--precio" style="flex:2;">Descripción</span>
+                        <span class="prod-h-col prod-h-col--stock" style="width:100px;text-align:center;">Productos</span>
+                        <span class="prod-h-col prod-h-col--accion" style="width:110px;text-align:center;">Acción</span>
+                    </div>
+                    <div class="productos-cards" id="categoriasList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="pedidos-pagination" id="paginacionCategorias">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ===== VIEW: COMPROBANTES ===== -->
+            <section class="dash-view" id="view-comprobantes">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">COMPROBANTES</h2>
+                        <p class="section-desc">Historial de comprobantes emitidos por cada pedido</p>
+                    </div>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar por #comprobante, cliente o número..." id="searchComprobantes">
+                    </div>
+                    <div class="filter-dropdown">
+                        <i class="bi bi-funnel"></i>
+                        <select id="filterTipoComprobante">
+                            <option value="">Todos los tipos</option>
+                            <option value="Boleta">Boleta</option>
+                            <option value="Factura">Factura</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="productos-header-row">
+                        <span class="prod-h-col prod-h-col--img" style="width:50px;">#</span>
+                        <span class="prod-h-col prod-h-col--nombre" style="width:80px;">Tipo</span>
+                        <span class="prod-h-col prod-h-col--precio" style="width:120px;">Número</span>
+                        <span class="prod-h-col prod-h-col--stock" style="flex:1;">Cliente</span>
+                        <span class="prod-h-col prod-h-col--precio" style="width:100px;text-align:right;">Monto</span>
+                        <span class="prod-h-col" style="width:110px;">Método</span>
+                        <span class="prod-h-col" style="width:80px;text-align:center;">Pedido</span>
+                        <span class="prod-h-col prod-h-col--fecha" style="width:100px;">Fecha</span>
+                        <span class="prod-h-col prod-h-col--detalle" style="width:64px;text-align:center;">Detalle</span>
+                    </div>
+                    <div class="productos-cards" id="comprobantesList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="pedidos-pagination" id="paginacionComprobantes">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ===== VIEW: WHATSAPP ===== -->
+            <section class="dash-view" id="view-whatsapp">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">WHATSAPP - CHAT LOG</h2>
+                        <p class="section-desc">Conversaciones entrantes desde WhatsApp. Se marca si cada respuesta fue generada por Gemini o por el modo estático</p>
+                    </div>
+                    <button class="btn-new-product" onclick="refreshWhatsApp()">
+                        <i class="bi bi-arrow-clockwise"></i> Actualizar
+                    </button>
+                </div>
+
+                <div id="whatsappStatus">
+                    <div class="text-center py-3 text-muted">Cargando conversaciones...</div>
+                </div>
+
+                <div id="whatsappConversaciones">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===== MODAL NUEVO/EDITAR PRODUCTO ===== -->
+    <div class="modal-overlay" id="modalProducto">
+        <div class="modal-content">
+            <div class="modal-header-simple">
+                <h5 id="modalProductoTitulo"><i class="bi bi-plus-circle"></i> Nuevo Producto</h5>
+                <button class="modal-close" onclick="cerrarModalProducto()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Nombre del producto</label>
+                        <input type="text" class="form-control form-control-dash" id="inputNombreProducto" placeholder="Ej. Palta Hass 1kg">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Precio (S/)</label>
+                        <input type="number" class="form-control form-control-dash" id="inputPrecioProducto" placeholder="0.00" step="0.01">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Stock</label>
+                        <input type="number" class="form-control form-control-dash" id="inputStockProducto" placeholder="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-select form-control-dash" id="inputCategoriaProducto">
+                            <option value="">Seleccionar categoría</option>
+                            <option value="1">Frutas y Verduras</option>
+                            <option value="2">Lácteos</option>
+                            <option value="3">Bebidas</option>
+                            <option value="4">Abarrotes</option>
+                            <option value="5">Snacks</option>
+                            <option value="6">Limpieza</option>
+                            <option value="7">Carnes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select form-control-dash" id="inputEstadoProducto">
+                            <option value="Disponible">Disponible</option>
+                            <option value="Agotado">Agotado</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control form-control-dash" id="inputDescripcionProducto" rows="2" placeholder="Breve descripción..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">URL de Imagen</label>
+                        <input type="text" class="form-control form-control-dash" id="inputImagenProducto" placeholder="https://ejemplo.com/imagen.jpg">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer-simple">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarModalProducto()">Cancelar</button>
+                <button class="btn-massgo-primary px-4 py-2" style="font-size:.9rem;" onclick="guardarProducto()">Guardar Producto</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DETALLE PEDIDO ===== -->
+    <div class="modal-overlay" id="modalDetallePedido">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header-simple">
+                <h5 id="modalDetalleTitulo"><i class="bi bi-receipt"></i> Detalle del Pedido</h5>
+                <button class="modal-close" onclick="cerrarDetallePedido()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalDetalleBody">
+                <!-- Rendered by JS -->
+            </div>
+            <div class="modal-footer-simple">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarDetallePedido()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL NUEVO/EDITAR CATEGORÍA ===== -->
+    <div class="modal-overlay" id="modalCategoria">
+        <div class="modal-content">
+            <div class="modal-header-simple">
+                <h5 id="modalCategoriaTitulo"><i class="bi bi-plus-circle"></i> Nueva Categoría</h5>
+                <button class="modal-close" onclick="cerrarModalCategoria()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control form-control-dash" id="inputNombreCategoria" placeholder="Ej. Lácteos">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control form-control-dash" id="inputDescripcionCategoria" rows="2" placeholder="Breve descripción..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer-simple">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarModalCategoria()">Cancelar</button>
+                <button class="btn-massgo-primary px-4 py-2" style="font-size:.9rem;" onclick="guardarCategoria()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DETALLE COMPROBANTE ===== -->
+    <div class="modal-overlay" id="modalDetalleComprobante">
+        <div class="modal-content">
+            <div class="modal-header-simple">
+                <h5 id="modalComprobanteTitulo"><i class="bi bi-receipt"></i> Detalle del Comprobante</h5>
+                <button class="modal-close" onclick="cerrarDetalleComprobante()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalComprobanteBody">
+                <!-- Rendered by JS -->
+            </div>
+            <div class="modal-footer-simple" style="justify-content:space-between;">
+                <button class="btn-massgo-primary px-4 py-2" style="font-size:.9rem;" onclick="imprimirComprobante()">
+                    <i class="bi bi-printer"></i> Imprimir / PDF
+                </button>
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarDetalleComprobante()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

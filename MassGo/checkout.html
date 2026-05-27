@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Datos de Entrega</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="MASSGO">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <meta property="og:title" content="MASSGO - Supermercado de Barrio en tu Bolsillo">
+    <meta property="og:description" content="Compra desde tu celular y recibe en menos de 30 minutos.">
+    <meta property="og:image" content="img/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="css/massgo.css" rel="stylesheet">
+    <link href="css/chatbot.css" rel="stylesheet">
+    <style>
+        body { background: #f5f5f5; min-height: 100vh; }
+
+        /* INDICADOR DE PASOS */
+        .steps-bar {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; margin-bottom: 28px;
+        }
+        .step-item {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .step-circle {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: .9rem;
+            border: 2px solid #ddd; background: white; color: #ccc;
+            transition: all .3s;
+        }
+        .step-circle.activo { background: var(--rosa-fuerte); border-color: var(--rosa-fuerte); color: white; }
+        .step-circle.completado { background: #4caf50; border-color: #4caf50; color: white; }
+        .step-label { font-size: .75rem; font-weight: 600; color: #aaa; }
+        .step-label.activo { color: var(--rosa-fuerte); }
+        .step-line { width: 60px; height: 2px; background: #ddd; margin-bottom: 18px; }
+        .step-line.completado { background: #4caf50; }
+
+        /* PANELES */
+        .panel-entrega {
+            background: var(--amarillo-suave);
+            border: 2px solid var(--amarillo-fuerte);
+            border-radius: 22px; padding: 28px;
+            margin-bottom: 20px;
+        }
+        .paso-numero {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--rosa-fuerte); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1rem; flex-shrink: 0;
+        }
+        .paso-titulo { font-size: 1.2rem; font-weight: 800; color: var(--texto-oscuro); }
+
+        .form-massgo {
+            border-radius: 14px; border: 2px solid #e0e0e0;
+            padding: 12px 16px; font-size: .95rem; width: 100%;
+            outline: none; transition: border .2s; background: white;
+            appearance: none; -webkit-appearance: none;
+        }
+        .form-massgo:focus { border-color: var(--rosa-fuerte); }
+        label.form-label-massgo { font-weight: 600; font-size: .9rem; margin-bottom: 6px; display: block; }
+        .requerido { color: var(--rosa-fuerte); }
+
+        .input-icon-wrap { position: relative; }
+        .input-icon-wrap .icono { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: .9rem; }
+        .input-icon-wrap .form-massgo { padding-left: 38px; }
+
+        /* HORARIO */
+        .opcion-horario {
+            border: 2px solid #ddd; border-radius: 16px; padding: 16px;
+            cursor: pointer; transition: all .3s; background: white; position: relative;
+        }
+        .opcion-horario.activo { border-color: var(--rosa-fuerte); background: var(--rosa-pastel); }
+        .radio-dot {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid #ccc; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all .3s;
+        }
+        .opcion-horario.activo .radio-dot { border-color: var(--rosa-fuerte); background: var(--rosa-fuerte); }
+        .opcion-horario.activo .radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: white; }
+        .badge-recomendado {
+            position: absolute; top: -10px; left: 16px;
+            background: var(--rosa-fuerte); color: white;
+            font-size: .7rem; font-weight: 700; padding: 3px 10px; border-radius: 10px;
+        }
+
+        /* PANEL PEDIDO */
+        .panel-pedido {
+            background: linear-gradient(160deg, var(--amarillo-suave) 0%, #fffde7 100%);
+            border: 2px solid var(--amarillo-fuerte);
+            border-radius: 24px;
+            padding: 26px;
+            box-shadow: 0 8px 32px rgba(241,184,27,.18);
+            position: sticky;
+            top: 90px;
+        }
+        .panel-pedido h5 {
+            font-weight: 800; font-size: 1.15rem;
+            color: var(--texto-oscuro); margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .panel-pedido h5 i { color: var(--rosa-fuerte); }
+
+        .item-pedido {
+            background: white;
+            border: 1.5px solid rgba(241,184,27,.35);
+            border-radius: 12px;
+            padding: 10px 14px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: .9rem; color: var(--texto-oscuro);
+        }
+        .item-pedido .item-nombre-pedido {
+            font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        .item-pedido .item-precio-pedido {
+            font-weight: 800; color: var(--rosa-fuerte); flex-shrink: 0; margin-left: 8px;
+        }
+        .cant-badge {
+            background: var(--rosa-fuerte); color: white;
+            border-radius: 8px; padding: 2px 8px;
+            font-weight: 700; font-size: .8rem; margin-right: 8px; flex-shrink: 0;
+        }
+
+        .resumen-divider-pedido {
+            border: none; border-top: 2px dashed rgba(241,184,27,.5); margin: 14px 0;
+        }
+
+        .linea-pedido {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; font-size: .9rem; color: #666;
+        }
+        .linea-pedido.envio {
+            color: var(--rosa-fuerte); font-weight: 700;
+        }
+        .linea-pedido.envio i { color: var(--rosa-fuerte); }
+
+        .total-pedido-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 4px;
+        }
+        .total-pedido-label { font-size: 1rem; font-weight: 800; color: var(--texto-oscuro); }
+        .total-pedido { font-size: 1.9rem; font-weight: 900; color: var(--rosa-fuerte); line-height: 1; }
+
+        .btn-continuar {
+            width: 100%; padding: 16px; font-size: 1rem; border-radius: 50px; margin-top: 20px;
+            background: linear-gradient(135deg, var(--rosa-fuerte), #ff4d8a);
+            color: white; border: none; font-weight: 800; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 6px 22px rgba(254,12,101,.38);
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-continuar:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(254,12,101,.48); }
+        .seguro-pago {
+            text-align: center; font-size: .78rem; color: #999;
+            margin-top: 12px; margin-bottom: 0;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .seguro-pago i { color: #4caf50; }
+
+        /* ── RESPONSIVE MOBILE ── */
+        @media (max-width: 576px) {
+            .container { padding-left: 12px; padding-right: 12px; }
+            .steps-bar { margin-bottom: 18px; }
+            .step-line { width: 36px; }
+            .step-circle { width: 30px; height: 30px; font-size: .78rem; }
+            .step-label { font-size: .68rem; }
+            .panel-entrega { padding: 18px 14px; border-radius: 16px; }
+            .paso-titulo { font-size: 1rem; }
+            .form-massgo { padding: 10px 12px 10px 34px; font-size: .88rem; }
+            .opcion-horario { padding: 12px 10px; }
+            .opcion-horario .fw-bold { font-size: .85rem !important; }
+            .opcion-horario .text-muted { font-size: .75rem !important; }
+            /* Panel pedido: quita sticky en mobile */
+            .panel-pedido { position: static; border-radius: 16px; padding: 18px 14px; }
+            .total-pedido { font-size: 1.5rem; }
+            .btn-continuar { padding: 14px; font-size: .92rem; }
+            .item-pedido { padding: 8px 10px; font-size: .82rem; }
+            .item-pedido .item-nombre-pedido { max-width: 140px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="alerta-massgo" id="alertaCarrito"></div>
+
+
+
+<div class="container py-4">
+
+    <!-- INDICADOR DE PASOS -->
+    <div class="steps-bar">
+        <div class="step-item">
+            <div class="step-circle activo">1</div>
+            <span class="step-label activo">Entrega</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+            <div class="step-circle">2</div>
+            <span class="step-label">Pago</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item">
+            <div class="step-circle">3</div>
+            <span class="step-label">Confirmación</span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Formulario -->
+        <div class="col-lg-7">
+
+            <!-- PASO 1: Datos de entrega -->
+            <div class="panel-entrega">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="paso-numero">1</div>
+                    <span class="paso-titulo">Datos de entrega</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label-massgo">Zona / Distrito <span class="requerido">*</span></label>
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-map icono"></i>
+                        <select class="form-massgo" id="selectDistrito">
+                            <option value="">Selecciona tu distrito</option>
+                            <option>San Isidro</option>
+                            <option>El Porvenir</option>
+                            <option>La Esperanza</option>
+                            <option>Florencia de Mora</option>
+                            <option>Víctor Larco</option>
+                            <option>Moche</option>
+                            <option>Salaverry</option>
+                            <option>Trujillo Centro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label-massgo">Dirección completa <span class="requerido">*</span></label>
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-location-dot icono"></i>
+                        <input type="text" class="form-massgo" id="inputDireccion" placeholder="Ej. Av. Siempre Viva 123, Dpto 4">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label-massgo">Referencia para el repartidor</label>
+                    <div class="input-icon-wrap">
+                        <i class="fas fa-circle-info icono"></i>
+                        <input type="text" class="form-massgo" id="inputReferencia" placeholder="Ej. Edificio con rejas negras frente al parque">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASO 2: Horario -->
+            <div class="panel-entrega">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="paso-numero">2</div>
+                    <span class="paso-titulo">Horario de entrega</span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="opcion-horario activo" id="opcionExpress" onclick="seleccionarHorario('express')">
+                            <span class="badge-recomendado">RECOMENDADO</span>
+                            <div class="d-flex align-items-start gap-2 mt-1">
+                                <div class="radio-dot"></div>
+                                <div>
+                                    <div class="fw-bold" style="font-size:.95rem;">
+                                        <i class="fas fa-motorcycle me-1" style="color:var(--rosa-fuerte);"></i> Express (15-30 min)
+                                    </div>
+                                    <div class="text-muted" style="font-size:.82rem;">Recibe tus productos lo más rápido posible.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="opcion-horario" id="opcionProgramado" onclick="seleccionarHorario('programado')">
+                            <div class="d-flex align-items-start gap-2">
+                                <div class="radio-dot"></div>
+                                <div>
+                                    <div class="fw-bold" style="font-size:.95rem;">
+                                        <i class="fas fa-calendar me-1" style="color:#888;"></i> Programado
+                                    </div>
+                                    <div class="text-muted" style="font-size:.82rem;">Elige el día y la hora que mejor te convenga.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mt-2 d-none" id="panelProgramado">
+                    <div class="col-6">
+                        <input type="date" class="form-massgo" id="fechaProgramada">
+                    </div>
+                    <div class="col-6">
+                        <select class="form-massgo" id="horaProgramada">
+                            <option>08:00 - 09:00</option>
+                            <option>09:00 - 10:00</option>
+                            <option>10:00 - 11:00</option>
+                            <option>14:00 - 15:00</option>
+                            <option>15:00 - 16:00</option>
+                            <option>18:00 - 19:00</option>
+                            <option>19:00 - 20:00</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Resumen pedido -->
+        <div class="col-lg-5">
+            <div class="panel-pedido">
+                <h5><i class="bi bi-bag-check-fill"></i> Tu Pedido</h5>
+                <div id="itemsPedido"></div>
+                <hr class="resumen-divider-pedido">
+                <div class="linea-pedido">
+                    <span>Subtotal</span>
+                    <span id="subtotalPedido">S/ 0.00</span>
+                </div>
+                <div class="linea-pedido envio">
+                    <span><i class="fas fa-motorcycle me-1"></i> Envío Express</span>
+                    <span id="envioPedido">S/ 2.50</span>
+                </div>
+                <hr class="resumen-divider-pedido">
+                <div class="total-pedido-row">
+                    <span class="total-pedido-label">Total a pagar</span>
+                    <span class="total-pedido" id="totalPedido">S/ 0.00</span>
+                </div>
+                <button class="btn-continuar" onclick="continuarAPago()">
+                    Confirmar y Pagar <i class="fas fa-arrow-right"></i>
+                </button>
+                <p class="seguro-pago">
+                    <i class="fas fa-shield-alt"></i> Tus datos de pago se solicitarán en el siguiente paso de forma segura.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHATBOT -->
+<div class="chatbot-btn" title="Asistente MassGo"><i class="bi bi-robot"></i></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/massgo.js"></script>
+<script src="js/navbar.js"></script>
+<script>
+    let tipoEntrega = 'express';
+
+    function cargarResumen() {
+        const carrito = getCarrito().filter(i => i.stock !== 0);
+        if (carrito.length === 0) { window.location.href = 'carrito.html'; return; }
+
+        const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const envio = 2.50;
+        const total = subtotal + envio;
+
+        document.getElementById('itemsPedido').innerHTML = carrito.map(i => `
+            <div class="item-pedido">
+                <div class="d-flex align-items-center" style="min-width:0;">
+                    <span class="cant-badge">${i.cantidad}</span>
+                    <span class="item-nombre-pedido">${i.nombre}</span>
+                </div>
+                <span class="item-precio-pedido">S/ ${(i.precio * i.cantidad).toFixed(2)}</span>
+            </div>
+        `).join('');
+
+        document.getElementById('subtotalPedido').textContent = `S/ ${subtotal.toFixed(2)}`;
+        document.getElementById('totalPedido').textContent = `S/ ${total.toFixed(2)}`;
+    }
+
+    function seleccionarHorario(tipo) {
+        tipoEntrega = tipo;
+        document.getElementById('opcionExpress').classList.toggle('activo', tipo === 'express');
+        document.getElementById('opcionProgramado').classList.toggle('activo', tipo === 'programado');
+        document.getElementById('panelProgramado').classList.toggle('d-none', tipo !== 'programado');
+
+        const carrito = getCarrito().filter(i => i.stock !== 0);
+        const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const envio = tipo === 'express' ? 2.50 : 1.50;
+        document.getElementById('envioPedido').textContent = `S/ ${envio.toFixed(2)}`;
+        document.getElementById('totalPedido').textContent = `S/ ${(subtotal + envio).toFixed(2)}`;
+    }
+
+    function continuarAPago() {
+        const distrito = document.getElementById('selectDistrito').value;
+        const direccion = document.getElementById('inputDireccion').value.trim();
+        const referencia = document.getElementById('inputReferencia').value.trim();
+
+        if (!distrito) { mostrarToast('Selecciona tu distrito', 'warning'); return; }
+        if (!direccion) { mostrarToast('Ingresa tu dirección completa', 'warning'); return; }
+
+        // Guardar datos de entrega temporalmente
+        const carrito = getCarrito().filter(i => i.stock !== 0);
+        const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const envio = tipoEntrega === 'express' ? 2.50 : 1.50;
+
+        const datosEntrega = {
+            distrito, direccion, referencia, tipoEntrega,
+            subtotal, envio, total: subtotal + envio,
+            items: carrito
+        };
+        localStorage.setItem('massgo_entrega', JSON.stringify(datosEntrega));
+        window.location.href = 'pago.html';
+    }
+
+    cargarResumen();
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

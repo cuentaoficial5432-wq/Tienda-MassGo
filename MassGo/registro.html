@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Crear Cuenta</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="MASSGO">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <meta property="og:title" content="MASSGO - Supermercado de Barrio en tu Bolsillo">
+    <meta property="og:description" content="Compra desde tu celular y recibe en menos de 30 minutos.">
+    <meta property="og:image" content="img/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="css/massgo.css" rel="stylesheet">
+    <link href="css/chatbot.css" rel="stylesheet">
+    <style>
+        :root {
+            --rosa-fuerte: #fe0c65;
+            --amarillo-fuerte: #f1b81b;
+            --fondo: #faf2cb;
+            --texto-oscuro: #362922;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f0f2f5;
+        }
+
+        /* Panel izquierdo */
+        .panel-marca {
+            flex: 0 0 45%;
+            position: relative;
+            overflow: hidden;
+        }
+        .panel-marca .bg-img {
+            position: absolute;
+            inset: 0;
+            background-image: url('https://plus.unsplash.com/premium_photo-1681487952361-8576bf2f854e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDEwM3x8fGVufDB8fHx8fA%3D%3D');
+            background-size: cover;
+            background-position: center center;
+        }
+        .panel-marca .bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.42) 0%,
+                rgba(0,0,0,0.04) 35%,
+                rgba(0,0,0,0) 60%
+            );
+        }
+        .panel-marca .marca-contenido {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 28px 28px;
+        }
+        .marca-logo {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .marca-logo .icono {
+            width: 40px; height: 40px;
+            background: var(--amarillo-fuerte);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: var(--texto-oscuro);
+        }
+        .marca-logo span {
+            font-size: 1.6rem; font-weight: 900; color: white;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Panel formulario */
+        .panel-form {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+            background: white;
+            overflow-y: auto;
+        }
+        .form-card {
+            width: 100%;
+            max-width: 420px;
+            padding: 8px 0;
+        }
+        .form-card h2 {
+            font-size: 1.65rem; font-weight: 800;
+            color: var(--texto-oscuro); margin-bottom: 4px;
+        }
+        .subtitulo { color: #888; font-size: 0.88rem; margin-bottom: 28px; }
+
+        /* Inputs */
+        .campo-label {
+            font-size: 0.83rem; font-weight: 600;
+            color: #444; margin-bottom: 5px; display: block;
+        }
+        .campo-wrap { position: relative; margin-bottom: 16px; }
+        .campo-icono {
+            position: absolute; left: 13px; top: 50%;
+            transform: translateY(-50%);
+            color: #bbb; font-size: 0.9rem; pointer-events: none;
+        }
+        .campo-input {
+            width: 100%;
+            border: 1.5px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 11px 16px 11px 38px;
+            font-size: 0.88rem;
+            color: var(--texto-oscuro);
+            background: #fafafa;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .campo-input:focus {
+            border-color: var(--rosa-fuerte);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(254,12,101,0.08);
+        }
+        .campo-input.valido   { border-color: #27ae60; }
+        .campo-input.invalido { border-color: #e74c3c; }
+        .campo-input.pe-5 { padding-right: 42px; }
+        .icono-validacion {
+            position: absolute; right: 12px; top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+        }
+        .btn-ojo {
+            position: absolute; right: 12px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: #bbb; cursor: pointer; font-size: 0.95rem; padding: 0;
+            transition: color 0.2s;
+        }
+        .btn-ojo:hover { color: var(--rosa-fuerte); }
+        .hint {
+            font-size: 0.76rem; margin-top: 4px;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .hint.ok  { color: #27ae60; }
+        .hint.err { color: #e74c3c; }
+
+        /* Checkbox términos */
+        .terminos-wrap {
+            display: flex; align-items: flex-start; gap: 10px;
+            margin-bottom: 20px;
+        }
+        .terminos-wrap input[type="checkbox"] {
+            width: 18px; height: 18px; margin-top: 1px;
+            accent-color: var(--rosa-fuerte); cursor: pointer; flex-shrink: 0;
+        }
+        .terminos-wrap label {
+            font-size: 0.82rem; color: #555; cursor: pointer; line-height: 1.4;
+        }
+        .terminos-wrap a {
+            color: var(--rosa-fuerte); font-weight: 700; text-decoration: none;
+        }
+
+        /* Botón */
+        .btn-crear {
+            width: 100%;
+            background: var(--rosa-fuerte);
+            color: white; border: none;
+            border-radius: 10px; padding: 13px;
+            font-size: 0.95rem; font-weight: 700;
+            cursor: pointer;
+            transition: filter 0.2s, transform 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-bottom: 20px;
+        }
+        .btn-crear:hover { filter: brightness(0.92); transform: translateY(-1px); }
+        .btn-crear:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
+        .login-link {
+            text-align: center; font-size: 0.88rem; color: #666;
+        }
+        .login-link a {
+            color: var(--rosa-fuerte); font-weight: 700; text-decoration: none;
+        }
+        .btn-volver {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #888; font-size: 0.85rem; text-decoration: none;
+            margin-bottom: 24px; transition: color 0.2s;
+        }
+        .btn-volver:hover { color: var(--rosa-fuerte); }
+
+        @media (max-width: 768px) {
+            .panel-marca { display: none; }
+            .panel-form { background: #f0f2f5; }
+            .form-card {
+                background: white; border-radius: 20px;
+                padding: 28px 20px;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- PANEL IZQUIERDO -->
+<div class="panel-marca">
+    <div class="bg-img"></div>
+    <div class="bg-overlay"></div>
+    <div class="marca-contenido">
+        <div class="marca-logo">
+            <div class="icono"><img src="img/apple-touch-icon.png" alt="MASSGO" style="width:36px;height:36px;border-radius:8px;"></div>
+            <span>MASSGO</span>
+        </div>
+    </div>
+</div>
+
+<!-- PANEL FORMULARIO -->
+<div class="panel-form">
+    <div class="form-card">
+
+        <a href="index.html" class="btn-volver">
+            <i class="bi bi-arrow-left"></i> Volver al inicio
+        </a>
+
+        <h2>Crear cuenta</h2>
+        <p class="subtitulo">Completa tus datos para unirte a MassGo</p>
+
+        <form id="formRegistro" onsubmit="procesarRegistro(event)" novalidate>
+
+            <!-- Nombres -->
+            <label class="campo-label">Nombres <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-person campo-icono"></i>
+                <input type="text" id="inputNombre" class="campo-input"
+                       placeholder="Ej. María" autocomplete="given-name" required>
+            </div>
+
+            <!-- Apellidos -->
+            <label class="campo-label">Apellidos <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-person campo-icono"></i>
+                <input type="text" id="inputApellido" class="campo-input"
+                       placeholder="Ej. González Pérez" autocomplete="family-name" required>
+            </div>
+
+            <!-- DNI -->
+            <label class="campo-label">DNI</label>
+            <div class="campo-wrap">
+                <i class="bi bi-card-text campo-icono"></i>
+                <input type="text" id="inputDni" class="campo-input"
+                       placeholder="Opcional — 8 dígitos">
+            </div>
+
+            <!-- Teléfono -->
+            <label class="campo-label">Teléfono <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-phone campo-icono"></i>
+                <input type="tel" id="inputTelefono" class="campo-input"
+                       placeholder="Ej. 987654321" required>
+            </div>
+
+            <!-- Email -->
+            <label class="campo-label">Email <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-envelope campo-icono"></i>
+                <input type="email" id="inputEmail" class="campo-input pe-5"
+                       placeholder="maria@ejemplo.com"
+                       autocomplete="email" required
+                       oninput="validarEmail(this)">
+                <span class="icono-validacion" id="iconEmail"></span>
+            </div>
+
+            <!-- Contraseña -->
+            <label class="campo-label">Contraseña <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-lock campo-icono"></i>
+                <input type="password" id="inputPass" class="campo-input pe-5"
+                       placeholder="Mínimo 8 caracteres"
+                       autocomplete="new-password" required
+                       oninput="validarPass(this)">
+                <button type="button" class="btn-ojo" onclick="togglePass('inputPass',this)">
+                    <i class="bi bi-eye-slash"></i>
+                </button>
+            </div>
+            <div class="hint" id="hintPass"></div>
+
+            <!-- Confirmar contraseña -->
+            <label class="campo-label" style="margin-top:12px;">Confirmar contraseña <span style="color:var(--rosa-fuerte);">*</span></label>
+            <div class="campo-wrap">
+                <i class="bi bi-lock campo-icono"></i>
+                <input type="password" id="inputPass2" class="campo-input pe-5"
+                       placeholder="Repite tu contraseña"
+                       autocomplete="new-password" required
+                       oninput="validarConfirm(this)">
+                <button type="button" class="btn-ojo" onclick="togglePass('inputPass2',this)">
+                    <i class="bi bi-eye-slash"></i>
+                </button>
+            </div>
+            <div class="hint" id="hintConfirm"></div>
+
+            <!-- Términos -->
+            <div class="terminos-wrap" style="margin-top:16px;">
+                <input type="checkbox" id="chkTerminos" required>
+                <label for="chkTerminos">
+                    Acepto los
+                    <a href="#">Términos y Condiciones</a>
+                    y las
+                    <a href="#">Políticas de Privacidad</a>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-crear" id="btnCrear">
+                Crear cuenta <i class="bi bi-arrow-right"></i>
+            </button>
+
+        </form>
+
+        <p class="login-link">
+            ¿Ya tienes cuenta?
+            <a href="login.html">Iniciar sesión</a>
+        </p>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    function togglePass(id, btn) {
+        const input = document.getElementById(id);
+        const icon  = btn.querySelector('i');
+        input.type  = input.type === 'password' ? 'text' : 'password';
+        icon.className = input.type === 'password' ? 'bi bi-eye-slash' : 'bi bi-eye';
+    }
+
+    function validarEmail(input) {
+        const ok  = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value);
+        const ico = document.getElementById('iconEmail');
+        input.classList.toggle('valido',   ok);
+        input.classList.toggle('invalido', input.value && !ok);
+        ico.innerHTML = input.value
+            ? (ok ? '<i class="bi bi-check-circle-fill" style="color:#27ae60;"></i>'
+                  : '<i class="bi bi-x-circle-fill" style="color:#e74c3c;"></i>')
+            : '';
+    }
+
+    function validarPass(input) {
+        const ok   = input.value.length >= 8;
+        const hint = document.getElementById('hintPass');
+        input.classList.toggle('valido',   ok);
+        input.classList.toggle('invalido', input.value && !ok);
+        hint.className = 'hint ' + (ok ? 'ok' : 'err');
+        hint.innerHTML = input.value
+            ? (ok ? '<i class="bi bi-check-lg"></i> Mínimo 8 caracteres'
+                  : '<i class="bi bi-x-lg"></i> Mínimo 8 caracteres')
+            : '';
+    }
+
+    function validarConfirm(input) {
+        const pass  = document.getElementById('inputPass').value;
+        const ok    = input.value === pass && input.value.length > 0;
+        const hint  = document.getElementById('hintConfirm');
+        input.classList.toggle('valido',   ok);
+        input.classList.toggle('invalido', input.value && !ok);
+        hint.className = 'hint ' + (ok ? 'ok' : 'err');
+        hint.innerHTML = input.value
+            ? (ok ? '<i class="bi bi-check-lg"></i> Las contraseñas coinciden'
+                  : '<i class="bi bi-x-lg"></i> Las contraseñas no coinciden')
+            : '';
+    }
+
+    async function procesarRegistro(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnCrear');
+        const email     = document.getElementById('inputEmail').value.trim();
+        const pass      = document.getElementById('inputPass').value;
+        const pass2     = document.getElementById('inputPass2').value;
+        const nombres   = document.getElementById('inputNombre').value.trim();
+        const apellidos = document.getElementById('inputApellido').value.trim();
+        const dni       = document.getElementById('inputDni').value.trim();
+        const telefono  = document.getElementById('inputTelefono').value.trim();
+
+        if (!document.getElementById('chkTerminos').checked) {
+            alert('Debes aceptar los Términos y Condiciones para continuar.');
+            return;
+        }
+        if (!nombres || !apellidos) {
+            alert('Completa tus nombres y apellidos.');
+            return;
+        }
+        if (pass !== pass2) {
+            alert('Las contraseñas no coinciden.');
+            return;
+        }
+        if (pass.length < 8) {
+            alert('La contraseña debe tener al menos 8 caracteres.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creando cuenta...';
+
+        try {
+            const result = await massgoRegister({ email, password: pass, nombres, apellidos, dni, telefono });
+            if (result.needsEmailConfirmation) {
+                alert('Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.');
+                window.location.href = 'login.html';
+            } else {
+                window.location.href = 'index.html';
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Crear cuenta <i class="bi bi-arrow-right"></i>';
+        }
+    }
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MassGo - Test de Autenticación</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="MASSGO">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <meta property="og:title" content="MASSGO - Supermercado de Barrio en tu Bolsillo">
+    <meta property="og:description" content="Compra desde tu celular y recibe en menos de 30 minutos.">
+    <meta property="og:image" content="img/icon-512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { background: #f0f2f5; font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px 20px; }
+        .card-test { max-width: 700px; margin: 0 auto; background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+        h2 { font-weight: 800; color: #362922; }
+        .step { border-left: 3px solid #fe0c65; padding-left: 16px; margin-bottom: 20px; }
+        .step h5 { font-weight: 700; color: #362922; }
+        .log { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 12px 16px; font-family: 'Cascadia Code', monospace; font-size: .82rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
+        .log .ok { color: #4ec9b0; }
+        .log .err { color: #f44747; }
+        .log .info { color: #569cd6; }
+        .badge-status { font-size: .75rem; padding: 4px 10px; border-radius: 20px; }
+        .spinner-border-sm { width: 1rem; height: 1rem; border-width: .15em; }
+    </style>
+</head>
+<body>
+<div class="card-test">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2><i class="bi bi-shield-check me-2" style="color:#fe0c65;"></i>Test Auth — MassGo</h2>
+        <a href="index.html" class="btn btn-sm btn-outline-secondary rounded-pill">Volver</a>
+    </div>
+    <p class="text-muted mb-4">Prueba el registro y login con Supabase. Se genera un usuario temporal con sufijo <code>_test_rollback</code>.</p>
+
+    <div class="step">
+        <h5>1. Configura los datos de prueba</h5>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label small">Nombres</label>
+                <input id="tNombre" class="form-control form-control-sm" value="Test">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Apellidos</label>
+                <input id="tApellido" class="form-control form-control-sm" value="Usuario">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Email</label>
+                <input id="tEmail" class="form-control form-control-sm" value="test_rollback_XXXXX@ejemplo.com">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Contraseña</label>
+                <input id="tPass" class="form-control form-control-sm" value="TestPass123!">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">DNI</label>
+                <input id="tDni" class="form-control form-control-sm" value="12345678">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small">Teléfono</label>
+                <input id="tTelefono" class="form-control form-control-sm" value="987654321">
+            </div>
+        </div>
+        <div class="mt-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="generarEmailUnico()">
+                <i class="bi bi-arrow-repeat"></i> Generar email único
+            </button>
+        </div>
+    </div>
+
+    <div class="step">
+        <h5>2. Ejecutar pruebas</h5>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-danger" id="btnTestRegistro" onclick="testRegistro()">
+                <i class="bi bi-person-plus"></i> Test: Registrar
+            </button>
+            <button class="btn btn-danger" id="btnTestLogin" onclick="testLogin()" disabled>
+                <i class="bi bi-box-arrow-in-right"></i> Test: Login
+            </button>
+            <button class="btn btn-outline-success" id="btnRollback" onclick="testRollback()" disabled>
+                <i class="bi bi-arrow-return-left"></i> Rollback (limpiar)
+            </button>
+        </div>
+        <div class="mt-2 small text-muted">Orden sugerido: Registrar → Login → Rollback</div>
+    </div>
+
+    <div class="step">
+        <h5>3. Log de resultados</h5>
+        <div class="log" id="logOutput">[info] Listo. Presiona "Test: Registrar" para comenzar.</div>
+    </div>
+
+    <div id="resultBadges" class="d-flex gap-2 mt-3"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    const LOG = document.getElementById('logOutput');
+    const BADGES = document.getElementById('resultBadges');
+    let testUserId = null;
+    let testEmail = null;
+    let testUserSerial = null;
+
+    function log(msg, type = 'info') {
+        LOG.innerHTML += `\n[${type}] ${msg}`;
+        LOG.scrollTop = LOG.scrollHeight;
+    }
+
+    function generarEmailUnico() {
+        const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        document.getElementById('tEmail').value = `test_rollback_${suffix}@ejemplo.com`;
+        log('Email único generado', 'info');
+    }
+
+    function badge(text, color) {
+        BADGES.innerHTML += `<span class="badge-status" style="background:${color}20;color:${color};border:1px solid ${color}40;">${text}</span>`;
+    }
+
+    async function testRegistro() {
+        const btn = document.getElementById('btnTestRegistro');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Registrando...';
+        BADGES.innerHTML = '';
+        LOG.innerHTML = '[info] Iniciando prueba de registro...';
+        testUserId = null;
+        testEmail = null;
+        testUserSerial = null;
+
+        const nombres   = document.getElementById('tNombre').value.trim();
+        const apellidos = document.getElementById('tApellido').value.trim();
+        let email = document.getElementById('tEmail').value.trim();
+        const pass  = document.getElementById('tPass').value;
+        const dni   = document.getElementById('tDni').value.trim();
+        const telefono  = document.getElementById('tTelefono').value.trim();
+
+        if (!email.includes('_rollback_')) {
+            const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            email = `test_rollback_${suffix}@massgo.test`;
+            document.getElementById('tEmail').value = email;
+            log(`Email auto-generado: ${email}`, 'info');
+        }
+
+        testEmail = email;
+
+        try {
+            log(`Registrando: ${email} ...`, 'info');
+            const result = await massgoRegister({ email, password: pass, nombres, apellidos, dni, telefono });
+
+            testUserId = result.user?.id || null;
+            log(`✓ Usuario creado en Auth: ${testUserId}`, 'ok');
+
+            if (result.needsEmailConfirmation) {
+                log('⚠ Confirmación de email requerida — desactívala en Supabase Dashboard para pruebas completas.', 'err');
+                badge('Registro OK (sin sesión)', '#f1b81b');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-person-plus"></i> Test: Registrar';
+                document.getElementById('btnRollback').disabled = false;
+                return;
+            }
+
+            log('✓ Sesión iniciada automáticamente', 'ok');
+
+            const session = await massgo.auth.getSession();
+            const meta = session.data?.session?.user?.user_metadata || {};
+            log(`✓ Nombre en metadata: ${meta.nombre || '(no definido)'}`, 'ok');
+
+            try {
+                const { data: u } = await massgo.from('usuario').select('id_usuario, username').eq('auth_id', testUserId).single();
+                testUserSerial = u?.id_usuario;
+                log(`✓ usuario: id=${testUserSerial}, username=${u?.username}`, 'ok');
+
+                const { data: pu } = await massgo.from('personausuario').select('id_persona').eq('id_usuario', testUserSerial).single();
+                log(`✓ personausuario → id_persona=${pu?.id_persona}`, 'ok');
+
+                const { data: doc } = await massgo.from('documento').select('numero').eq('id_persona', pu?.id_persona).maybeSingle();
+                if (doc) log(`✓ documento: ${doc.numero}`, 'ok');
+
+                const { data: pt } = await massgo.from('personatelefono').select('id_telefono').eq('id_persona', pu?.id_persona).maybeSingle();
+                if (pt) log(`✓ personatelefono → id_telefono=${pt.id_telefono}`, 'ok');
+
+                const { data: ur } = await massgo.from('usuariorol').select('id_rol').eq('id_usuario', testUserSerial).maybeSingle();
+                if (ur) log(`✓ usuariorol → id_rol=${ur.id_rol}`, 'ok');
+            } catch (e) {
+                log(`✗ Error verificando datos en DB: ${e.message}`, 'err');
+                badge('DB: Error', '#e74c3c');
+            }
+
+            log('✓ REGISTRO EXITOSO', 'ok');
+            badge('Registro OK', '#27ae60');
+
+            document.getElementById('btnTestLogin').disabled = false;
+            document.getElementById('btnRollback').disabled = false;
+        } catch (e) {
+            log(`✗ Error en registro: ${e.message}`, 'err');
+            badge('Registro Falló', '#e74c3c');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-person-plus"></i> Test: Registrar';
+    }
+
+    async function testLogin() {
+        const btn = document.getElementById('btnTestLogin');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Iniciando sesión...';
+
+        try {
+            await massgoLogout();
+            log('Sesión anterior cerrada', 'info');
+        } catch (_) {}
+
+        await new Promise(r => setTimeout(r, 300));
+
+        try {
+            const email = testEmail || document.getElementById('tEmail').value.trim();
+            const pass  = document.getElementById('tPass').value;
+            log(`Iniciando sesión con: ${email} ...`, 'info');
+
+            const data = await massgoLogin({ email, password: pass });
+            log(`✓ Login exitoso — usuario: ${data.user?.id}`, 'ok');
+
+            const session = await massgo.auth.getSession();
+            const nombre = session.data?.session?.user?.user_metadata?.nombre || 'N/A';
+            log(`✓ Nombre desde metadata: ${nombre}`, 'ok');
+
+            log('✓ LOGIN EXITOSO', 'ok');
+            badge('Login OK', '#27ae60');
+        } catch (e) {
+            log(`✗ Error en login: ${e.message}`, 'err');
+            badge('Login Falló', '#e74c3c');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Test: Login';
+    }
+
+    async function testRollback() {
+        const btn = document.getElementById('btnRollback');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Limpiando...';
+        LOG.innerHTML += '\n[info] Ejecutando rollback...';
+
+        try {
+            await massgoLogout();
+            log('Sesión cerrada', 'info');
+        } catch (_) {}
+
+        let cleaned = false;
+
+        if (testUserSerial) {
+            try { await massgo.from('usuariorol').delete().eq('id_usuario', testUserSerial); log('✓ usuariorol eliminado', 'ok'); }
+            catch (e) { log(`✗ Error limpiando usuariorol: ${e.message}`, 'err'); }
+            try { await massgo.from('personausuario').delete().eq('id_usuario', testUserSerial); log('✓ personausuario eliminado', 'ok'); }
+            catch (e) { log(`✗ Error limpiando personausuario: ${e.message}`, 'err'); }
+            try {
+                const { data: pu } = await massgo.from('personausuario').select('id_persona').eq('id_usuario', testUserSerial).maybeSingle();
+                if (pu?.id_persona) {
+                    const { data: docs } = await massgo.from('documento').select('id_documento').eq('id_persona', pu.id_persona);
+                    for (const d of docs || []) { await massgo.from('documento').delete().eq('id_documento', d.id_documento); }
+                    const { data: pts } = await massgo.from('personatelefono').select('id_telefono').eq('id_persona', pu.id_persona);
+                    for (const pt of pts || []) {
+                        await massgo.from('telefono').delete().eq('id_telefono', pt.id_telefono);
+                        await massgo.from('personatelefono').delete().eq('id_telefono', pt.id_telefono);
+                    }
+                    await massgo.from('persona').delete().eq('id_persona', pu.id_persona);
+                    log('✓ documento/telefono/persona eliminados', 'ok');
+                }
+            } catch (e) { log(`✗ Error limpiando persona: ${e.message}`, 'err'); }
+            try { await massgo.from('usuario').delete().eq('id_usuario', testUserSerial); log('✓ usuario eliminado', 'ok'); }
+            catch (e) { log(`✗ Error limpiando usuario: ${e.message}`, 'err'); }
+            cleaned = true;
+        } else if (testUserId) {
+            try {
+                const { data: u } = await massgo.from('usuario').select('id_usuario').eq('auth_id', testUserId).maybeSingle();
+                if (u?.id_usuario) {
+                    await massgo.from('personausuario').delete().eq('id_usuario', u.id_usuario);
+                    const { data: pu2 } = await massgo.from('personausuario').select('id_persona').eq('id_usuario', u.id_usuario).maybeSingle();
+                    if (pu2?.id_persona) await massgo.from('persona').delete().eq('id_persona', pu2.id_persona);
+                    await massgo.from('usuario').delete().eq('id_usuario', u.id_usuario);
+                    log('✓ Datos en DB limpiados (por auth_id)', 'ok');
+                    cleaned = true;
+                }
+            } catch (e) { log(`✗ Error limpiando: ${e.message}`, 'err'); }
+        }
+
+        if (testEmail) {
+            log(`ℹ Para eliminar el auth user "${testEmail}", ejecuta en SQL Editor de Supabase:`, 'info');
+            log(`   DELETE FROM auth.users WHERE email = '${testEmail}';`, 'info');
+            badge('Auth user pendiente', '#f1b81b');
+        }
+
+        if (cleaned) {
+            log('✓ ROLLBACK COMPLETADO (DB local limpia)', 'ok');
+            badge('Rollback OK', '#27ae60');
+        } else {
+            log('ℹ No había datos para limpiar en DB', 'info');
+        }
+
+        testUserId = null;
+        testEmail = null;
+        testUserSerial = null;
+        document.getElementById('btnTestLogin').disabled = true;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-return-left"></i> Rollback (limpiar)';
+    }
+
+    generarEmailUnico();
+</script>
+</body>
+</html>
