@@ -1,4 +1,3 @@
-@ -0,0 +1,69 @@
 # 🛒 MassGo — Supermercado de Barrio en tu Bolsillo
 
 MassGo es una plataforma de quick commerce hiperlocal desarrollada para la transformación digital de Tiendas Mass. El proyecto busca combinar la experiencia del supermercado de barrio con la velocidad y comodidad del comercio electrónico moderno.
