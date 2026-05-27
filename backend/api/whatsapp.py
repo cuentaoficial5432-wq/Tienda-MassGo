@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/whatsapp", tags=["WhatsApp"])
 OPENWA_BASE = "http://localhost:2785"
 OPENWA_API_KEY = "dev-admin-key"
 WEBHOOK_SECRET = "massgo-wa-hmac-2026"
-GEMINI_API_KEY = "AIzaSyBvSMea31eV5b2TxtTiEkZNIEhKmjoD23U"
+GEMINI_API_KEY = "-"
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 
 SYSTEM_PROMPT = """Eres el asistente virtual oficial de MassGo (massgo.pe), un supermercado de barrio a domicilio en Trujillo, Perú.

@@ -5,7 +5,7 @@
  */
 
 const CHATBOT_CONFIG = {
-    geminiKey: 'AIzaSyBvSMea31eV5b2TxtTiEkZNIEhKmjoD23U',
+    geminiKey: '-',
     geminiModel: 'gemini-3.1-flash-lite',
     whatsappNumber: '+51972097791',
     siteName: 'MassGo',
