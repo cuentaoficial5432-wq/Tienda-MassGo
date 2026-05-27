@@ -26,10 +26,8 @@ Los usuarios pueden realizar compras desde la web o aplicación móvil y recibir
 - CSS3
 - JavaScript
 - Bootstrap
-- Chart.js
 - LocalStorage
 - APIs de Inteligencia Artificial
-- OpenFoodFacts API
 
 ## 🎯 Objetivo del Proyecto
 
