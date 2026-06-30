@@ -105,9 +105,13 @@ class Pedido(BaseModel):
     estado: str = "Pendiente"
     total: float
     cliente_nombre: Optional[str] = None
+    codigo_seguimiento: Optional[str] = None
     detalles: List[DetallePedido] = []
     envio: Optional[Envio] = None
     pagos: List[Pago] = []
+    codigo_usado: Optional[str] = None
+    descuento_aplicado: float = 0
+    id_codigo_descuento: Optional[int] = None
 
     class Config:
         from_attributes = True

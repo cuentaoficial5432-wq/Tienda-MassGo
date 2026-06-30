@@ -5,8 +5,8 @@
  */
 
 const CHATBOT_CONFIG = {
-    geminiKey: '-',
-    geminiModel: 'gemini-3.1-flash-lite',
+    // La API key de Gemini se gestiona desde el backend (config.py / .env)
+    // El frontend llama a /api/ai/gemini-proxy para evitar exponer la key.
     whatsappNumber: '+51972097791',
     siteName: 'MassGo',
     siteUrl: 'massgo.pe',
@@ -64,6 +64,98 @@ async function fetchProductCatalog() {
     } catch (e) {
         console.warn('No se pudo cargar catalogo:', e);
     }
+}
+
+async function buscarPedido(mensaje) {
+    const patrones = [
+        /#MG[-\s]*(\d+)/i,
+        /MG[-\s]*(\d+)/i,
+        /pedido\s*#?\s*(\d+)/i,
+        /n[°º]\s*(\d+)/i,
+    ];
+    let id = null;
+    for (const p of patrones) {
+        const m = mensaje.match(p);
+        if (m) { id = parseInt(m[1]); break; }
+    }
+    if (!id) return null;
+    try {
+        const res = await fetch(`/api/pedidos/${id}`);
+        if (!res.ok) return null;
+        const pedido = await res.json();
+        let info = `\n[INFORMACION REAL DEL PEDIDO #MG-${pedido.id_pedido}]:\n`;
+        info += `- Estado: ${pedido.estado}\n`;
+        info += `- Total: S/${pedido.total?.toFixed(2)}\n`;
+        info += `- Fecha: ${pedido.fecha || 'No disponible'}\n`;
+        if (pedido.envio) {
+            info += `- Direccion de entrega: ${pedido.envio.direccion_entrega}\n`;
+            info += `- Estado del envio: ${pedido.envio.estado}\n`;
+        }
+        if (pedido.detalles && pedido.detalles.length > 0) {
+            info += `- Productos:\n`;
+            pedido.detalles.forEach(d => {
+                info += `  * ${d.producto_nombre || 'Producto'} x${d.cantidad} - S/${(d.cantidad * d.precio_unitario).toFixed(2)}\n`;
+            });
+        }
+        if (pedido.pagos && pedido.pagos.length > 0) {
+            info += `- Pago: ${pedido.pagos[0].metodo_pago || 'No registrado'} - S/${pedido.pagos[0].monto?.toFixed(2)}\n`;
+        }
+        info += `[USA ESTA INFORMACION REAL para responder al usuario. NO digas que no tienes acceso.]\n`;
+        return info;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function procesarAccionPedido(mensaje) {
+    const msg = mensaje.toLowerCase();
+    const patrones = [/#MG[-\s]*(\d+)/i, /MG[-\s]*(\d+)/i, /pedido\s*#?\s*(\d+)/i, /n[°º]\s*(\d+)/i];
+    let id = null;
+    for (const p of patrones) {
+        const m = mensaje.match(p);
+        if (m) { id = parseInt(m[1]); break; }
+    }
+    if (!id) return null;
+
+    const esCancelar = /cancela|cancelar|cancelo|anula|anular|anulo/i.test(msg);
+    const esRastrear = /rastrea|rastrear|rastreo|donde.*est[aá]|seguimiento|tracking|ubicar|estado/i.test(msg);
+
+    if (esCancelar) {
+        try {
+            const res = await fetch(`/api/pedidos/${id}/cancelar`, { method: 'PATCH' });
+            const data = await res.json();
+            if (res.ok) {
+                return `Tu pedido **#MG-${id}** ha sido cancelado exitosamente. ${data.mensaje || ''}`;
+            } else {
+                const detail = data.detail || 'No se pudo cancelar el pedido.';
+                return `No pude cancelar el pedido **#MG-${id}**: ${detail}`;
+            }
+        } catch (e) {
+            return `Hubo un error al intentar cancelar el pedido #MG-${id}. Inténtalo de nuevo.`;
+        }
+    }
+
+    if (esRastrear) {
+        try {
+            const res = await fetch(`/api/pedidos/${id}`);
+            if (!res.ok) return `No encontré el pedido **#MG-${id}**.`;
+            const p = await res.json();
+            let info = `📦 **Estado del pedido #MG-${id}**\n`;
+            info += `Estado: **${p.estado}**\n`;
+            info += `Total: S/${p.total?.toFixed(2)}\n`;
+            if (p.envio) {
+                info += `Dirección: ${p.envio.direccion_entrega}\n`;
+                info += `Envío: ${p.envio.estado || 'Pendiente'}\n`;
+                if (p.envio.fecha_envio) info += `Fecha estimada: ${String(p.envio.fecha_envio).slice(0, 16)}\n`;
+            }
+            if (p.codigo_seguimiento) info += `Código: ${p.codigo_seguimiento}\n`;
+            return info;
+        } catch (e) {
+            return `No pude obtener la información del pedido #MG-${id}.`;
+        }
+    }
+
+    return null;
 }
 
 // ── Inyectar HTML del chatbot al final del body ──
@@ -206,12 +298,20 @@ async function consultarGemini(mensajeUsuario) {
     isProcessing = true;
     mostrarTyping();
 
-    // Mantener solo últimos 20 mensajes de contexto
+    const accionPedido = await procesarAccionPedido(mensajeUsuario);
+    if (accionPedido) {
+        ocultarTyping();
+        agregarMensajeBot(formatearRespuesta(accionPedido));
+        isProcessing = false;
+        return;
+    }
+
     if (chatHistory.length > 40) {
         chatHistory = chatHistory.slice(-40);
     }
 
-    const fullPrompt = SYSTEM_PROMPT + (productCatalog || '');
+    const pedidoInfo = await buscarPedido(mensajeUsuario);
+    const fullPrompt = SYSTEM_PROMPT + (productCatalog || '') + (pedidoInfo || '');
 
     const contents = [
         { role: 'user', parts: [{ text: fullPrompt }] },
@@ -220,32 +320,23 @@ async function consultarGemini(mensajeUsuario) {
     ];
 
     try {
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${CHATBOT_CONFIG.geminiModel}:generateContent?key=${CHATBOT_CONFIG.geminiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents,
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 500,
-                        topP: 0.9,
-                    },
-                    safetySettings: [
-                        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                    ],
-                }),
-            }
-        );
+        const res = await fetch('/api/ai/gemini-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents,
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 500,
+                    topP: 0.9,
+                },
+            }),
+        });
 
         const data = await res.json();
 
         if (!res.ok) {
-            throw new Error(data.error?.message || `HTTP ${res.status}`);
+            throw new Error(data.detail || `HTTP ${res.status}`);
         }
 
         const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Lo siento, no pude procesar tu consulta. Intenta de nuevo.';

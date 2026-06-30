@@ -1,1 +1,41 @@
-openwa/
+# ── Environment ──
+.env
+.env.local
+.env.production
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# ── Node ──
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── IDE ──
+.vscode/
+.idea/
+*.sublime-*
+
+# ── Project specific ──
+openwa/.wwebjs_cache/
+openwa/data/
+openwa/dist/
+openwa/server.log
+openwa/server.err
+backend/server.log
+backend/server_error.log

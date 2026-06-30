@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MASSGO - Lista de Compras Inteligente</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="theme-color" content="#fe0c65">
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="css/massgo.css" rel="stylesheet">
+    <link href="css/chatbot.css" rel="stylesheet">
+    <style>
+        body { background: #f5f5f5; min-height: 100vh; }
+        .panel-lista {
+            background: var(--amarillo-suave);
+            border: 2px solid var(--amarillo-fuerte);
+            border-radius: 24px; padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.08);
+        }
+        .item-sugerencia {
+            background: white; border-radius: 16px; padding: 14px 18px;
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            transition: all .2s; cursor: pointer;
+        }
+        .item-sugerencia:hover { transform: translateX(4px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+        .item-sugerencia.seleccionado { border: 2px solid var(--rosa-fuerte); background: var(--rosa-pastel); }
+        .item-sugerencia .check {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid #ddd; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all .2s;
+        }
+        .item-sugerencia.seleccionado .check { background: var(--rosa-fuerte); border-color: var(--rosa-fuerte); color: white; }
+        .item-sugerencia .info { flex: 1; }
+        .item-sugerencia .info .nombre { font-weight: 700; color: var(--texto-oscuro); }
+        .item-sugerencia .info .razon { font-size: .78rem; color: #888; }
+        .item-sugerencia .precio { font-weight: 800; color: var(--rosa-fuerte); flex-shrink: 0; }
+        .badge-ia {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: white; font-size: .7rem; font-weight: 700;
+            padding: 3px 10px; border-radius: 20px; display: inline-flex;
+            align-items: center; gap: 4px;
+        }
+        .generar-btn {
+            background: linear-gradient(135deg, var(--rosa-fuerte), #ff4d8a);
+            color: white; border: none; border-radius: 50px; padding: 14px 28px;
+            font-weight: 700; font-size: .95rem; cursor: pointer;
+            transition: all .3s; box-shadow: 0 6px 20px rgba(254,12,101,.3);
+        }
+        .generar-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(254,12,101,.4); }
+        .generar-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+        .categoria-tag {
+            font-size: .72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .5px; color: #aaa; margin-bottom: 8px; margin-top: 16px;
+        }
+        .categoria-tag:first-child { margin-top: 0; }
+        .loading-dots::after { content: ''; animation: dots 1.5s infinite; }
+        @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+    </style>
+</head>
+<body>
+<div class="alerta-massgo" id="alertaCarrito"></div>
+
+<div class="container py-4" style="max-width: 720px;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 style="font-weight:900;margin-bottom:4px;"><i class="bi bi-stars" style="color:var(--rosa-fuerte);"></i> Lista Inteligente</h2>
+            <p class="text-muted mb-0">Basada en tus compras frecuentes y sugerencias con IA</p>
+        </div>
+        <a href="index.html" class="btn btn-outline-secondary rounded-pill btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="panel-lista">
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <div>
+                <span class="badge-ia"><i class="bi bi-robot me-1"></i>IA</span>
+                <span class="ms-2" style="font-weight:600;font-size:.9rem;color:var(--texto-oscuro);">
+                    Sugerencias personalizadas
+                </span>
+            </div>
+            <button class="generar-btn" id="btnGenerarLista" onclick="generarListaInteligente()">
+                <i class="bi bi-magic me-2"></i> Generar lista semanal
+            </button>
+        </div>
+
+        <div id="listaSugerencias">
+            <div class="text-center py-5" id="loadingState">
+                <div class="spinner-border" style="color:var(--rosa-fuerte);" role="status"></div>
+                <p class="text-muted mt-2">Cargando sugerencias personalizadas...</p>
+            </div>
+        </div>
+
+        <div id="listaActions" class="d-none mt-3">
+            <hr>
+            <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-outline-secondary rounded-pill" onclick="agregarSeleccionados()">
+                    <i class="bi bi-cart-plus me-1"></i> Agregar seleccionados al carrito
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/massgo.js"></script>
+<script src="js/navbar.js"></script>
+<script>
+    let sugerenciasActuales = [];
+    let seleccionados = new Set();
+
+    async function generarListaInteligente() {
+        const btn = document.getElementById('btnGenerarLista');
+        const container = document.getElementById('listaSugerencias');
+
+        let usuarioLogueado = false;
+        try {
+            if (typeof massgo !== 'undefined' && massgo?.auth) {
+                const { data: { user } } = await massgo.auth.getUser();
+                if (user) usuarioLogueado = true;
+            }
+        } catch (e) {}
+
+        if (!usuarioLogueado) {
+            container.innerHTML = `<div class="text-center py-5">
+                <i class="bi bi-person-lock" style="font-size:3rem;color:#ccc;display:block;margin-bottom:12px;"></i>
+                <p class="text-muted">Inicia sesión para recibir recomendaciones personalizadas</p>
+                <a href="login.html" class="btn btn-sm rounded-pill" style="background:var(--rosa-fuerte);color:white;font-weight:700;text-decoration:none;padding:8px 24px;display:inline-block;">Iniciar sesión</a>
+            </div>`;
+            if (btn) btn.style.display = 'none';
+            document.getElementById('listaActions')?.classList.add('d-none');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>';
+
+        try {
+            let recomendaciones = [];
+            let authId = null;
+            try {
+                const { data: { user } } = await massgo.auth.getUser();
+                authId = user?.id || null;
+                const res = await fetch('/api/ai/recomendar/usuario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ auth_id: authId, top_n: 12 })
+                });
+                if (res.ok) recomendaciones = await res.json();
+            } catch (e) { /* fallback */ }
+
+            if (!recomendaciones || recomendaciones.length === 0) {
+                const res = await fetch('/api/productos/?limite=200');
+                const data = await res.json();
+                const lista = Array.isArray(data) ? data : (data.value || []);
+                recomendaciones = lista
+                    .filter(p => p.estado !== 'Agotado' && p.stock > 0)
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 12);
+            }
+
+            sugerenciasActuales = recomendaciones;
+            seleccionados = new Set();
+            renderSugerencias(recomendaciones);
+            document.getElementById('listaActions').classList.remove('d-none');
+        } catch (e) {
+            container.innerHTML = `<div class="text-center py-4 text-danger">
+                <i class="bi bi-exclamation-triangle" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+                <p>Error al generar lista: ${e.message}</p>
+                <button class="btn btn-outline-danger rounded-pill btn-sm" onclick="generarListaInteligente()">Reintentar</button>
+            </div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-magic me-2"></i> Generar lista semanal';
+        }
+    }
+
+    function renderSugerencias(productos) {
+        const container = document.getElementById('listaSugerencias');
+        const categorias = {};
+        productos.forEach(p => {
+            const cat = p.categoria?.nombre || 'Otros';
+            if (!categorias[cat]) categorias[cat] = [];
+            categorias[cat].push(p);
+        });
+
+        let html = '';
+        Object.entries(categorias).forEach(([cat, items]) => {
+            html += `<div class="categoria-tag"><i class="bi bi-tag me-1"></i>${cat}</div>`;
+            items.forEach(p => {
+                const pid = p.id_producto || p.id;
+                const checked = seleccionados.has(pid) ? 'seleccionado' : '';
+                const razon = p.es_oferta_flash ? '🔥 En oferta flash' : (p.stock <= 5 ? '⚠️ Stock limitado' : 'Recomendado para ti');
+                html += `
+                    <div class="item-sugerencia ${checked}">
+                        <div class="check" onclick="toggleSeleccion(${pid})">${seleccionados.has(pid) ? '<i class="bi bi-check" style="font-size:.8rem;"></i>' : ''}</div>
+                        <div class="info" onclick="window.location.href='producto.html?id=${pid}'" style="cursor:pointer;">
+                            <div class="nombre">${p.nombre}</div>
+                            <div class="razon">${razon}</div>
+                        </div>
+                        <div class="precio" onclick="window.location.href='producto.html?id=${pid}'" style="cursor:pointer;">S/ ${Number(p.precio).toFixed(2)}</div>
+                    </div>`;
+            });
+        });
+
+        container.innerHTML = html;
+    }
+
+    function toggleSeleccion(id) {
+        if (seleccionados.has(id)) seleccionados.delete(id);
+        else seleccionados.add(id);
+        renderSugerencias(sugerenciasActuales);
+    }
+
+    function agregarSeleccionados() {
+        const productos = sugerenciasActuales.filter(p => seleccionados.has(p.id_producto || p.id));
+        productos.forEach(p => {
+            const pid = p.id_producto || p.id;
+            const img = p.imagen_url || p.imagen || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop';
+            agregarAlCarritoDirecto(pid, p.nombre, Number(p.precio), img, p.stock ?? 99, 1);
+        });
+        mostrarToast(`${productos.length} producto${productos.length > 1 ? 's' : ''} agregado${productos.length > 1 ? 's' : ''} al carrito`);
+        seleccionados = new Set();
+        renderSugerencias(sugerenciasActuales);
+    }
+
+    setTimeout(() => generarListaInteligente(), 300);
+</script>
+<script src="js/chatbot.js"></script>
+</body>
+</html>

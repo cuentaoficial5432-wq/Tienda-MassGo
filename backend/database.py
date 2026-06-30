@@ -123,15 +123,35 @@ class SupabaseDB:
             .execute()
         )
 
+    def crear_detalle_pedido(self, data: dict):
+        return self.table("detallepedido").insert(data).execute()
+
+    def descontar_stock(self, producto_id: int, cantidad: int):
+        res = self.table("producto").select("stock").eq("id_producto", producto_id).single().execute()
+        if not res.data:
+            return None
+        stock_actual = res.data.get("stock", 0)
+        if stock_actual < cantidad:
+            return None
+        nuevo_stock = stock_actual - cantidad
+        nuevo_estado = "Agotado" if nuevo_stock == 0 else "Disponible"
+        upd = self.table("producto").update({"stock": nuevo_stock, "estado": nuevo_estado}).eq("id_producto", producto_id).execute()
+        return upd.data[0] if upd.data else None
+
+    def get_productos_stock_multi(self, ids: list):
+        return self.table("producto").select("id_producto, stock, estado").in_("id_producto", ids).execute()
+
     # ==================== ENVIO ====================
     def get_envio_por_pedido(self, pedido_id: int):
-        return (
+        res = (
             self.table("envio")
             .select("*")
             .eq("id_pedido", pedido_id)
-            .single()
             .execute()
         )
+        if res.data:
+            return type('obj', (object,), {'data': res.data[0]})()
+        return type('obj', (object,), {'data': None})()
 
     # ==================== USUARIOS ====================
     def get_usuarios(self, limite: int = 50, offset: int = 0):
@@ -155,7 +175,7 @@ class SupabaseDB:
     def get_pagos_por_pedido(self, pedido_id: int):
         return (
             self.table("pago")
-            .select("*, metodopago!inner(nombre)")
+            .select("*, metodopago(nombre)")
             .eq("id_pedido", pedido_id)
             .execute()
         )
@@ -199,6 +219,44 @@ class SupabaseDB:
         )
         return res.data if res.data else []
 
+    # ==================== HISTORIAL USUARIO ====================
+    def get_historial_usuario(self, usuario_id: int, limite: int = 20):
+        """Obtiene los IDs de productos que un usuario ha comprado, del más reciente al más antiguo."""
+        res = (
+            self.table("detallepedido")
+            .select("id_producto, pedido!inner(id_usuario, fecha)")
+            .eq("pedido.id_usuario", usuario_id)
+            .order("pedido.fecha", desc=True)
+            .limit(limite * 3)
+            .execute()
+        )
+        if not res.data:
+            return []
+        seen = set()
+        historial = []
+        for d in res.data:
+            pid = d["id_producto"]
+            if pid not in seen:
+                seen.add(pid)
+                historial.append(pid)
+            if len(historial) >= limite:
+                break
+        return historial
+
+    def get_usuario_id_por_auth(self, auth_id: str):
+        """Busca el id_usuario (serial) a partir del auth_id (UUID de Supabase)."""
+        try:
+            res = (
+                self.table("usuario")
+                .select("id_usuario")
+                .eq("auth_id", auth_id)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0]["id_usuario"] if res.data else None
+        except Exception:
+            return None
+
     # ==================== COMPROBANTES ====================
     def get_comprobantes(self, limite: int = 50, offset: int = 0):
         return (
@@ -208,6 +266,15 @@ class SupabaseDB:
             .range(offset, offset + limite - 1)
             .execute()
         )
+
+    def crear_comprobante(self, data: dict):
+        return self.table("comprobante").insert(data).execute()
+
+    def get_ultimo_numero_comprobante(self):
+        res = self.table("comprobante").select("numero").order("id_comprobante", desc=True).limit(1).execute()
+        if res.data and res.data[0].get("numero"):
+            return res.data[0]["numero"]
+        return None
 
 
 db = SupabaseDB()

@@ -336,6 +336,10 @@
                     <span><i class="fas fa-motorcycle me-1"></i> Envío Express</span>
                     <span id="envioPedido">S/ 2.50</span>
                 </div>
+                <div class="linea-pedido descuento d-none" id="descuentoPedido">
+                    <span><i class="bi bi-tag-fill me-1"></i> Descuento</span>
+                    <span class="descuento-valor" style="color:#16a34a;font-weight:700;">- S/ 0.00</span>
+                </div>
                 <hr class="resumen-divider-pedido">
                 <div class="total-pedido-row">
                     <span class="total-pedido-label">Total a pagar</span>
@@ -370,7 +374,9 @@
 
         const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
         const envio = 2.50;
-        const total = subtotal + envio;
+        const descuentoData = JSON.parse(localStorage.getItem('massgo_descuento') || '{}');
+        const descuento = descuentoData.descuento || 0;
+        const total = subtotal + envio - descuento;
 
         document.getElementById('itemsPedido').innerHTML = carrito.map(i => `
             <div class="item-pedido">
@@ -383,6 +389,11 @@
         `).join('');
 
         document.getElementById('subtotalPedido').textContent = `S/ ${subtotal.toFixed(2)}`;
+        const descRow = document.getElementById('descuentoPedido');
+        if (descuento > 0 && descRow) {
+            descRow.classList.remove('d-none');
+            descRow.querySelector('.descuento-valor').textContent = `- S/ ${descuento.toFixed(2)}`;
+        }
         document.getElementById('totalPedido').textContent = `S/ ${total.toFixed(2)}`;
     }
 
@@ -392,11 +403,27 @@
         document.getElementById('opcionProgramado').classList.toggle('activo', tipo === 'programado');
         document.getElementById('panelProgramado').classList.toggle('d-none', tipo !== 'programado');
 
+        if (tipo === 'programado') {
+            const hoy = new Date();
+            const fechaStr = hoy.toISOString().split('T')[0];
+            document.getElementById('fechaProgramada').setAttribute('min', fechaStr);
+            if (!document.getElementById('fechaProgramada').value) {
+                document.getElementById('fechaProgramada').value = fechaStr;
+            }
+        }
+
         const carrito = getCarrito().filter(i => i.stock !== 0);
         const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
         const envio = tipo === 'express' ? 2.50 : 1.50;
+        const descuentoData = JSON.parse(localStorage.getItem('massgo_descuento') || '{}');
+        const descuento = descuentoData.descuento || 0;
         document.getElementById('envioPedido').textContent = `S/ ${envio.toFixed(2)}`;
-        document.getElementById('totalPedido').textContent = `S/ ${(subtotal + envio).toFixed(2)}`;
+        const descRow = document.getElementById('descuentoPedido');
+        if (descuento > 0 && descRow) {
+            descRow.classList.remove('d-none');
+            descRow.querySelector('.descuento-valor').textContent = `- S/ ${descuento.toFixed(2)}`;
+        }
+        document.getElementById('totalPedido').textContent = `S/ ${(subtotal + envio - descuento).toFixed(2)}`;
     }
 
     function continuarAPago() {
@@ -407,15 +434,27 @@
         if (!distrito) { mostrarToast('Selecciona tu distrito', 'warning'); return; }
         if (!direccion) { mostrarToast('Ingresa tu dirección completa', 'warning'); return; }
 
-        // Guardar datos de entrega temporalmente
+        const fechaProgramada = document.getElementById('fechaProgramada').value;
+        const horaProgramada = document.getElementById('horaProgramada').value;
+        if (tipoEntrega === 'programado') {
+            if (!fechaProgramada) { mostrarToast('Selecciona la fecha de entrega', 'warning'); return; }
+            if (!horaProgramada) { mostrarToast('Selecciona la hora de entrega', 'warning'); return; }
+        }
         const carrito = getCarrito().filter(i => i.stock !== 0);
         const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
         const envio = tipoEntrega === 'express' ? 2.50 : 1.50;
+        const descuentoData = JSON.parse(localStorage.getItem('massgo_descuento') || '{}');
+        const descuento = descuentoData.descuento || 0;
 
         const datosEntrega = {
             distrito, direccion, referencia, tipoEntrega,
-            subtotal, envio, total: subtotal + envio,
-            items: carrito
+            subtotal, envio, total: subtotal + envio - descuento,
+            items: carrito,
+            codigo_usado: descuentoData.codigo || null,
+            descuento_aplicado: descuento,
+            id_codigo_descuento: descuentoData.id_codigo || null,
+            fecha_programada: tipoEntrega === 'programado' ? fechaProgramada : '',
+            hora_programada: tipoEntrega === 'programado' ? horaProgramada : '',
         };
         localStorage.setItem('massgo_entrega', JSON.stringify(datosEntrega));
         window.location.href = 'pago.html';

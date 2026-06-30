@@ -23,6 +23,23 @@
     <link href="css/dashboard.css" rel="stylesheet">
 </head>
 <body>
+
+    <!-- ===== LOGIN OVERLAY ===== -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <div class="login-brand">
+                <img src="img/apple-touch-icon.png" alt="MASSGO" style="width:48px;height:48px;border-radius:12px;">
+                <span class="login-brand-text">MASSGO</span>
+                <span class="login-brand-badge">Admin</span>
+            </div>
+            <p class="login-subtitle">Panel de administración</p>
+            <div class="login-error" id="loginError">Credenciales incorrectas</div>
+            <input type="text" class="login-input" id="loginUser" placeholder="Usuario" autocomplete="off">
+            <input type="password" class="login-input" id="loginPass" placeholder="Contraseña">
+            <button class="login-btn" id="loginBtn" onclick="iniciarSesion()">Ingresar</button>
+        </div>
+    </div>
+
     <div class="dash-layout">
 
         <!-- ===== SIDEBAR ===== -->
@@ -64,20 +81,11 @@
                     <i class="bi bi-whatsapp"></i>
                     <span>WhatsApp</span>
                 </a>
-            </nav>
-
-            <div class="sidebar-profile">
-                <div class="profile-avatar">
-                    <i class="bi bi-person-fill"></i>
-                </div>
-                <div class="profile-info">
-                    <span class="profile-name">Admin MassGo</span>
-                    <span class="profile-role">Administrador</span>
-                </div>
-                <a href="/login.html" class="profile-logout" title="Cerrar sesión">
-                    <i class="bi bi-box-arrow-right"></i>
+                <a href="#" class="nav-item" data-view="descuentos" onclick="showView('descuentos');return false;">
+                    <i class="bi bi-percent"></i>
+                    <span>Descuentos</span>
                 </a>
-            </div>
+            </nav>
         </aside>
 
         <!-- ===== MAIN CONTENT ===== -->
@@ -97,7 +105,7 @@
                         <i class="bi bi-bell-fill"></i>
                         <span class="notif-dot"></span>
                     </button>
-                    <div class="topbar-user">
+                    <div class="topbar-user" onclick="cerrarSesion()" title="Cerrar sesión" style="cursor:pointer;">
                         <div class="user-avatar">
                             <i class="bi bi-person-fill"></i>
                         </div>
@@ -105,6 +113,7 @@
                             <span class="user-name">Admin MassGo</span>
                             <span class="user-role">Administrador</span>
                         </div>
+                        <i class="bi bi-box-arrow-right ms-2" style="color:#8892a4;font-size:1.1rem;"></i>
                     </div>
                 </div>
             </header>
@@ -473,6 +482,48 @@
                 </div>
             </section>
 
+            <!-- ===== VIEW: DESCUENTOS ===== -->
+            <section class="dash-view" id="view-descuentos">
+                <div class="section-header">
+                    <div class="section-title-group">
+                        <h2 class="section-title">CÓDIGOS DE DESCUENTO</h2>
+                        <p class="section-desc">Administra los códigos promocionales y descuentos</p>
+                    </div>
+                    <button class="btn-new-product" onclick="abrirModalDescuento()">
+                        <i class="bi bi-plus-lg"></i> Nuevo Código
+                    </button>
+                </div>
+
+                <div class="pedidos-filters">
+                    <div class="search-wrapper search-wrapper--wide">
+                        <i class="bi bi-search"></i>
+                        <input type="text" placeholder="Buscar código..." id="searchDescuentos">
+                    </div>
+                </div>
+
+                <div class="pedidos-table-wrap">
+                    <div class="productos-header-row">
+                        <span class="prod-h-col prod-h-col--img" style="width:50px;">ID</span>
+                        <span class="prod-h-col prod-h-col--nombre" style="flex:1;">Código</span>
+                        <span class="prod-h-col prod-h-col--precio" style="width:100px;">Tipo</span>
+                        <span class="prod-h-col prod-h-col--stock" style="width:80px;text-align:center;">Valor</span>
+                        <span class="prod-h-col" style="width:90px;text-align:center;">Usos</span>
+                        <span class="prod-h-col" style="width:90px;text-align:center;">Máx</span>
+                        <span class="prod-h-col" style="width:100px;text-align:center;">Mín</span>
+                        <span class="prod-h-col" style="width:70px;text-align:center;">Activo</span>
+                        <span class="prod-h-col prod-h-col--fecha" style="width:100px;">Vence</span>
+                        <span class="prod-h-col prod-h-col--detalle" style="width:100px;text-align:center;">Acción</span>
+                    </div>
+                    <div class="productos-cards" id="descuentosList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <div class="pedidos-pagination" id="paginacionDescuentos">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -591,6 +642,78 @@
                     <i class="bi bi-printer"></i> Imprimir / PDF
                 </button>
                 <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarDetalleComprobante()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL NUEVO/EDITAR DESCUENTO ===== -->
+    <div class="modal-overlay" id="modalDescuento">
+        <div class="modal-content">
+            <div class="modal-header-simple">
+                <h5 id="modalDescuentoTitulo"><i class="bi bi-percent"></i> Nuevo Código de Descuento</h5>
+                <button class="modal-close" onclick="cerrarModalDescuento()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Código</label>
+                        <input type="text" class="form-control form-control-dash" id="inputCodigoDescuento" placeholder="Ej. MASSGO10" style="text-transform:uppercase;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select form-control-dash" id="inputTipoDescuento">
+                            <option value="porcentaje">Porcentaje (%)</option>
+                            <option value="fijo">Monto Fijo (S/)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Valor</label>
+                        <input type="number" class="form-control form-control-dash" id="inputValorDescuento" placeholder="10" step="0.01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Compra Mínima (S/)</label>
+                        <input type="number" class="form-control form-control-dash" id="inputMinimoDescuento" placeholder="0" step="0.01">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Usos Máximos</label>
+                        <input type="number" class="form-control form-control-dash" id="inputUsoMaximoDescuento" placeholder="Sin límite">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fecha Expiración</label>
+                        <input type="date" class="form-control form-control-dash" id="inputExpiracionDescuento">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select form-control-dash" id="inputActivoDescuento">
+                            <option value="true">Activo</option>
+                            <option value="false">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripción</label>
+                        <input type="text" class="form-control form-control-dash" id="inputDescripcionDescuento" placeholder="Ej. 10% de descuento">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer-simple">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="cerrarModalDescuento()">Cancelar</button>
+                <button class="btn-massgo-primary px-4 py-2" style="font-size:.9rem;" onclick="guardarDescuento()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MODAL CERRAR SESIÓN ── -->
+    <div class="modal-overlay" id="modalLogout">
+        <div class="modal-content" style="max-width:380px;text-align:center;">
+            <div class="modal-header-simple">
+                <h5><i class="bi bi-box-arrow-right"></i> Cerrar sesión</h5>
+            </div>
+            <div class="modal-body-simple" style="padding:24px 32px;">
+                <p style="margin:0;color:#5a6170;font-size:.95rem;">¿Estás seguro de que deseas cerrar sesión?</p>
+            </div>
+            <div class="modal-footer-simple" style="justify-content:center;gap:12px;">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="document.getElementById('modalLogout').classList.remove('show')">Cancelar</button>
+                <button class="btn-massgo-primary px-4 py-2" style="font-size:.9rem;" onclick="confirmarCerrarSesion()">Sí, cerrar sesión</button>
             </div>
         </div>
     </div>

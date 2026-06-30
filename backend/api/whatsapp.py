@@ -2,16 +2,17 @@ import hashlib, hmac, json, httpx, logging, re, time
 from fastapi import APIRouter, Request
 from models import WhatsAppMessage, WhatsAppResponse
 from database import db
+from config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/whatsapp", tags=["WhatsApp"])
 
-OPENWA_BASE = "http://localhost:2785"
-OPENWA_API_KEY = "dev-admin-key"
-WEBHOOK_SECRET = "massgo-wa-hmac-2026"
-GEMINI_API_KEY = "-"
-GEMINI_MODEL = "gemini-3.1-flash-lite"
+OPENWA_BASE = settings.OPENWA_BASE
+OPENWA_API_KEY = settings.OPENWA_API_KEY
+WEBHOOK_SECRET = settings.WEBHOOK_SECRET
+GEMINI_API_KEY = settings.GEMINI_API_KEY
+GEMINI_MODEL = settings.GEMINI_MODEL
 
 SYSTEM_PROMPT = """Eres el asistente virtual oficial de MassGo (massgo.pe), un supermercado de barrio a domicilio en Trujillo, Perú.
 
@@ -113,8 +114,63 @@ def _agregar_mensaje(numero: str, role: str, content: str, source: str):
     if len(conversaciones[numero]) > 40:
         conversaciones[numero] = conversaciones[numero][-40:]
 
+def _procesar_accion_pedido(msg: str) -> str:
+    patrones = [r'#MG[-\s]*(\d+)', r'MG[-\s]*(\d+)', r'pedido\s*#?\s*(\d+)', r'n[°º]\s*(\d+)']
+    id_pedido = None
+    for patron in patrones:
+        m = re.search(patron, msg, re.IGNORECASE)
+        if m:
+            id_pedido = int(m.group(1))
+            break
+    if not id_pedido:
+        return None
+
+    es_cancelar = bool(re.search(r'cancela|cancelar|cancelo|anula|anular|anulo', msg))
+    es_rastrear = bool(re.search(r'rastrea|rastrear|rastreo|donde.*est[aá]|estado', msg, re.IGNORECASE))
+
+    if es_cancelar:
+        try:
+            import httpx
+            r = httpx.post(f"http://localhost:8000/api/pedidos/{id_pedido}/cancelar", timeout=10)
+            if r.status_code == 200:
+                return f"Tu pedido *#MG-{id_pedido}* ha sido cancelado exitosamente."
+            else:
+                detail = r.json().get("detail", "No se pudo cancelar.") if r.headers.get("content-type","").startswith("application/json") else "No se pudo cancelar."
+                return f"No pude cancelar el pedido *#MG-{id_pedido}*: {detail}"
+        except Exception:
+            return f"Hubo un error al cancelar el pedido #MG-{id_pedido}. Inténtalo de nuevo."
+
+    if es_rastrear:
+        try:
+            import httpx
+            r = httpx.get(f"http://localhost:8000/api/pedidos/{id_pedido}", timeout=10)
+            if r.status_code == 200:
+                p = r.json()
+                info = f"*Estado del pedido #MG-{id_pedido}*\n"
+                info += f"Estado: *{p.get('estado')}*\n"
+                info += f"Total: S/{p.get('total', 0):.2f}\n"
+                envio = p.get("envio")
+                if envio:
+                    info += f"Dirección: {envio.get('direccion_entrega', '—')}\n"
+                    info += f"Envío: {envio.get('estado', 'Pendiente')}\n"
+                    if envio.get("fecha_envio"):
+                        info += f"Fecha estimada: {str(envio['fecha_envio'])[:16]}\n"
+                if p.get("codigo_seguimiento"):
+                    info += f"Código: {p['codigo_seguimiento']}\n"
+                return info
+            else:
+                return f"No encontré el pedido *#MG-{id_pedido}*."
+        except Exception:
+            return f"No pude obtener información del pedido #MG-{id_pedido}."
+
+    return None
+
+
 def _responder_sin_gemini(mensaje: str) -> str:
     msg = mensaje.lower()
+    accion = _procesar_accion_pedido(msg)
+    if accion:
+        return accion
     if "horario" in msg or "abren" in msg or "atienden" in msg:
         return "Atendemos de lunes a domingo, de 7:00 a.m. a 10:00 p.m. ¿En qué más puedo ayudarte?"
     if "contacto" in msg or "teléfono" in msg or "whatsapp" in msg:
@@ -235,12 +291,17 @@ async def webhook_whatsapp(request: Request):
     # Intentar Gemini
     respuesta = None
     fuente = "fallback"
-    try:
-        _agregar_mensaje(numero, "user", mensaje, "user")
-        respuesta = await _consultar_gemini(mensaje, _get_historial(numero)[:-1])
-        fuente = "gemini"
-    except Exception as e:
-        logger.warning(f"Gemini falló: {e}")
+    accion = _procesar_accion_pedido(mensaje.lower())
+    if accion:
+        respuesta = accion
+        fuente = "accion_api"
+    else:
+        try:
+            _agregar_mensaje(numero, "user", mensaje, "user")
+            respuesta = await _consultar_gemini(mensaje, _get_historial(numero)[:-1])
+            fuente = "gemini"
+        except Exception as e:
+            logger.warning(f"Gemini falló: {e}")
 
     if respuesta is None:
         respuesta = _responder_sin_gemini(mensaje)

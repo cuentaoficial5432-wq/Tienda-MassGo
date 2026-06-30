@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class RecomendadorMassGo:
     def __init__(self):
-        self.vectorizer = TfidfVectorizer(max_features=200, stop_words="spanish")
+        self.vectorizer = TfidfVectorizer(max_features=200, stop_words=None, max_df=0.85, min_df=1)
         self.productos: List[Dict] = []
         self.matriz_tfidf = None
         self.entrenado = False

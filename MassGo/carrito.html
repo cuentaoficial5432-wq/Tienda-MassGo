@@ -251,6 +251,15 @@
         @media (min-width: 768px) {
             .sticky-mobile-bar { display: none !important; }
         }
+
+        /* ── CARRUSEL INTELIGENTE (cards) ── */
+        #listaInteligenteCarrito {
+            scrollbar-width: thin;
+            scrollbar-color: var(--rosa-fuerte) #f0f0f0;
+        }
+        #listaInteligenteCarrito::-webkit-scrollbar { height: 6px; }
+        #listaInteligenteCarrito::-webkit-scrollbar-track { background: #f0f0f0; border-radius: 10px; }
+        #listaInteligenteCarrito::-webkit-scrollbar-thumb { background: var(--rosa-fuerte); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -353,6 +362,32 @@
             </div>
 
         </div>
+
+        <!-- ── LISTA INTELIGENTE ── (full width, debajo de items + resumen) -->
+        <div id="seccionListaInteligente" class="mt-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div>
+                    <h5 style="font-weight:800;font-size:1rem;margin:0;">
+                        <i class="bi bi-stars" style="color:var(--rosa-fuerte);"></i>
+                        Lista Inteligente
+                    </h5>
+                    <small class="text-muted">Basada en tus compras y sugerencias con IA</small>
+                </div>
+                <button class="btn btn-sm rounded-pill" id="btnGenerarListaCarrito"
+                        style="background:linear-gradient(135deg,var(--rosa-fuerte),#ff4d8a);color:white;font-weight:700;padding:8px 18px;border:none;box-shadow:0 4px 14px rgba(254,12,101,.25);"
+                        onclick="generarListaInteligenteCarrito()">
+                    <i class="bi bi-magic me-1"></i> Generar lista semanal
+                </button>
+            </div>
+
+            <div id="listaInteligenteCarrito" class="row g-3 flex-nowrap overflow-auto pb-2" style="scroll-snap-type:x mandatory;">
+                <div class="col-12 text-center py-5" id="loadingStateCarrito">
+                    <i class="bi bi-robot" style="font-size:2.5rem;color:#ddd;display:block;margin-bottom:8px;"></i>
+                    <p class="text-muted small mb-0">Presiona "Generar lista semanal" para obtener sugerencias inteligentes.</p>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -411,7 +446,7 @@
             <div class="item-carrito ${sinStock ? 'sin-stock' : ''}">
                 <div class="item-img-wrap" onclick="window.location.href='producto.html?id=${item.id}'">
                     <img src="${item.imagen}" alt="${item.nombre}"
-                         onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop'">
+                         loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop'">
                 </div>
                 <div class="item-info">
                     <div class="item-nombre">${item.nombre}</div>
@@ -467,16 +502,38 @@
     }
 
     function aplicarDescuento() {
-        const codigo  = document.getElementById('inputDescuento').value.trim().toUpperCase();
-        const codigos = { 'MASSGO10': 0.10, 'TRUJILLO': 0.15, 'PROMO5': 0.05 };
-        if (codigos[codigo]) {
-            const subtotal = getCarrito().filter(i => i.stock !== 0).reduce((s, i) => s + i.precio * i.cantidad, 0);
-            descuentoAplicado = subtotal * codigos[codigo];
-            mostrarToast(`Código aplicado: ${Math.round(codigos[codigo] * 100)}% de descuento`);
-            actualizarResumen();
-        } else {
-            mostrarToast('Código no válido', 'error');
-        }
+        const codigo = document.getElementById('inputDescuento').value.trim().toUpperCase();
+        if (!codigo) { mostrarToast('Ingresa un código', 'warning'); return; }
+        const subtotal = getCarrito().filter(i => i.stock !== 0).reduce((s, i) => s + i.precio * i.cantidad, 0);
+        fetch('/api/descuentos/validar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo, subtotal })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.valido) {
+                descuentoAplicado = data.descuento;
+                localStorage.setItem('massgo_descuento', JSON.stringify({
+                    codigo: codigo,
+                    descuento: data.descuento,
+                    total_con_descuento: data.subtotal_con_descuento,
+                    id_codigo: data.id_codigo,
+                    tipo: data.tipo_descuento,
+                    valor: data.valor
+                }));
+                mostrarToast(data.mensaje);
+                actualizarResumen();
+            } else {
+                descuentoAplicado = 0;
+                localStorage.removeItem('massgo_descuento');
+                mostrarToast(data.mensaje, 'error');
+                actualizarResumen();
+            }
+        })
+        .catch(() => {
+            mostrarToast('Error al validar código', 'error');
+        });
     }
 
     function irAPagar() {
@@ -485,10 +542,120 @@
             mostrarToast('No hay productos disponibles en tu carrito', 'warning');
             return;
         }
+        // Save discount info for checkout
+        const desc = localStorage.getItem('massgo_descuento');
+        if (!desc) {
+            localStorage.removeItem('massgo_descuento');
+        }
         window.location.href = 'checkout.html';
     }
 
     renderCarrito();
+
+    setTimeout(() => generarListaInteligenteCarrito(), 100);
+
+    // ── Lista Inteligente (cards) ──
+    let sugerenciasCarrito = [];
+
+    async function generarListaInteligenteCarrito() {
+        const btn = document.getElementById('btnGenerarListaCarrito');
+        const container = document.getElementById('listaInteligenteCarrito');
+
+        let usuarioLogueado = false;
+        try {
+            if (typeof massgo !== 'undefined' && massgo?.auth) {
+                const { data: { user } } = await massgo.auth.getUser();
+                if (user) usuarioLogueado = true;
+            }
+        } catch (e) {}
+
+        if (!usuarioLogueado) {
+            container.innerHTML = `<div class="col-12 text-center py-4">
+                <i class="bi bi-person-lock" style="font-size:2rem;color:#ccc;display:block;margin-bottom:8px;"></i>
+                <p class="text-muted small mb-2">Inicia sesión para recibir recomendaciones personalizadas</p>
+                <a href="login.html" class="btn btn-sm rounded-pill" style="background:var(--rosa-fuerte);color:white;font-weight:700;text-decoration:none;padding:8px 24px;">Iniciar sesión</a>
+            </div>`;
+            if (btn) btn.style.display = 'none';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>';
+
+        try {
+            let recomendaciones = [];
+            let authId = null;
+            try {
+                const { data: { user } } = await massgo.auth.getUser();
+                authId = user?.id || null;
+                const res = await fetch('/api/ai/recomendar/usuario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ auth_id: authId, top_n: 8 })
+                });
+                if (res.ok) recomendaciones = await res.json();
+            } catch (e) { /* fallback */ }
+
+            if (!recomendaciones || recomendaciones.length < 4) {
+                const res = await fetch('/api/productos/?limite=200');
+                const data = await res.json();
+                const lista = Array.isArray(data) ? data : (data.value || []);
+                const faltan = 5 - (recomendaciones?.length || 0);
+                const extra = lista
+                    .filter(p => p.estado !== 'Agotado' && p.stock > 0 && !recomendaciones?.some(r => (r.id_producto || r.id) === (p.id_producto || p.id)))
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, faltan);
+                recomendaciones = [...(recomendaciones || []), ...extra];
+            }
+
+            sugerenciasCarrito = recomendaciones.slice(0, 5);
+            renderCardsCarrito(sugerenciasCarrito);
+        } catch (e) {
+            container.innerHTML = `<div class="col-12 text-center py-4 text-danger small">
+                <i class="bi bi-exclamation-triangle" style="font-size:1.5rem;display:block;margin-bottom:4px;"></i>
+                <p>Error: ${e.message}</p>
+                <button class="btn btn-outline-danger rounded-pill btn-sm" onclick="generarListaInteligenteCarrito()">Reintentar</button>
+            </div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-magic me-1"></i> Generar lista semanal';
+        }
+    }
+
+    function renderCardsCarrito(productos) {
+        const container = document.getElementById('listaInteligenteCarrito');
+        container.innerHTML = productos.map(p => {
+            const pid = p.id_producto || p.id;
+            const img = p.imagen_url || p.imagen || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop';
+            const badge = p.es_oferta_flash ? '<span style="position:absolute;top:6px;right:6px;background:#e53935;color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px;">OFERTA</span>' : '';
+            const irAProducto = `window.location.href='producto.html?id=${pid}'`;
+            return `
+                <div class="col-6 col-sm-4 col-md-3 col-lg" style="scroll-snap-align:start;min-width:160px;">
+                    <div onclick="${irAProducto}"
+                         style="background:white;border-radius:16px;border:1.5px solid #f0f0f0;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;transition:all .25s;position:relative;height:100%;cursor:pointer;"
+                         onmouseover="this.style.borderColor='var(--rosa-fuerte)';this.style.boxShadow='0 6px 20px rgba(254,12,101,.14)'"
+                         onmouseout="this.style.borderColor='#f0f0f0';this.style.boxShadow='none'">
+                        ${badge}
+                        <img src="${img}" alt="${p.nombre}"
+                             style="width:64px;height:64px;object-fit:contain;border-radius:10px;background:var(--celeste-suave);padding:4px;"
+                             loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop'">
+                        <span style="font-size:.82rem;font-weight:700;color:var(--texto-oscuro);line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${p.nombre}</span>
+                        <span style="font-size:.9rem;font-weight:900;color:var(--rosa-fuerte);">S/ ${Number(p.precio).toFixed(2)}</span>
+                        <button onclick="event.stopPropagation();agregarAlCarritoDirecto(${pid},'${p.nombre.replace(/'/g, "\\'")}',${Number(p.precio)},'${img.replace(/'/g, "\\'")}',${p.stock ?? 99},1);renderCarrito();"
+                                style="background:var(--rosa-fuerte);color:white;border:none;border-radius:50px;padding:5px 16px;font-size:.78rem;font-weight:700;cursor:pointer;transition:transform .15s;margin-top:auto;"
+                                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="bi bi-cart-plus me-1"></i> Agregar
+                        </button>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    const _origRenderCarrito = renderCarrito;
+    renderCarrito = function() {
+        _origRenderCarrito();
+        actualizarContadorCarrito();
+    };
 </script>
 <script src="js/chatbot.js"></script>
 </body>

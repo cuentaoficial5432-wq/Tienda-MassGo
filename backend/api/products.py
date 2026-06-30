@@ -96,3 +96,20 @@ async def eliminar_producto(producto_id: int):
     if not res.data:
         raise HTTPException(404, "Producto no encontrado")
     return None
+
+
+@router.get("/stock/check")
+async def verificar_stock(ids: str = Query(..., description="IDs separados por coma"), cantidades: str = Query(..., description="Cantidades separadas por coma")):
+    id_list = [int(x.strip()) for x in ids.split(",")]
+    cant_list = [int(x.strip()) for x in cantidades.split(",")]
+    if len(id_list) != len(cant_list):
+        raise HTTPException(400, "IDs y cantidades deben tener la misma longitud")
+    res = db.get_productos_stock_multi(id_list)
+    stock_map = {p["id_producto"]: p for p in (res.data or [])}
+    return [{
+        "id_producto": pid,
+        "nombre": stock_map[pid].get("nombre", "") if pid in stock_map else "",
+        "stock": stock_map[pid].get("stock", 0) if pid in stock_map else 0,
+        "solicitado": cant,
+        "disponible": stock_map[pid].get("stock", 0) >= cant if pid in stock_map else False,
+    } for pid, cant in zip(id_list, cant_list)]

@@ -22,6 +22,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="css/massgo.css" rel="stylesheet">
     <link href="css/chatbot.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <style>
         body { background: #f5f5f5; min-height: 100vh; }
         
@@ -108,43 +112,15 @@
         .aviso-despacho i { color: var(--rosa-fuerte); margin-top: 2px; flex-shrink: 0; }
         .aviso-despacho strong { color: var(--rosa-fuerte); }
 
-        /* MAPA SIMULADO */
-        .mapa-simulado {
-            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-            border-radius: 18px; height: 220px;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden; margin-bottom: 16px;
+        /* MAPA */
+        #mapaSeguimiento {
+            width: 100%; height: 400px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,.1);
+            margin-bottom: 16px;
         }
-        .mapa-simulado .mapa-grid {
-            position: absolute; inset: 0;
-            background-image: linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-        .mapa-simulado .ruta {
-            position: absolute; width: 60%; height: 3px;
-            background: linear-gradient(90deg, var(--rosa-fuerte), var(--celeste-fuerte));
-            border-radius: 3px; top: 50%; left: 20%;
-        }
-        .mapa-simulado .pin-repartidor {
-            position: absolute; font-size: 2rem;
-            animation: moverRepartidor 4s ease-in-out infinite alternate;
-        }
-        @keyframes moverRepartidor {
-            from { left: 22%; top: 45%; }
-            to   { left: 55%; top: 45%; }
-        }
-        .mapa-simulado .pin-destino {
-            position: absolute; right: 18%; top: 38%; font-size: 1.8rem;
-        }
-        .mapa-simulado .etiqueta-mapa {
-            position: absolute; bottom: 12px; left: 12px;
-            background: white; border-radius: 10px; padding: 6px 12px;
-            font-size: .8rem; font-weight: 700; color: var(--texto-oscuro);
-            box-shadow: 0 2px 8px rgba(0,0,0,.1);
-            display: flex; align-items: center; gap: 6px;
-        }
-        .etiqueta-mapa i { color: var(--rosa-fuerte); }
+        .delivery-marker { background: none; border: none; }
 
         /* ETA */
         .eta-badge {
@@ -311,8 +287,7 @@
             .aviso-despacho { padding: 10px 12px; font-size: .8rem; border-radius: 10px; }
 
             /* Mapa */
-            .mapa-simulado { height: 160px; border-radius: 14px; }
-            .etiqueta-mapa { font-size: .72rem; padding: 4px 8px; }
+            #mapaSeguimiento { height: 280px; border-radius: 14px; }
 
             /* Botones finales */
             .d-flex.gap-3 { flex-direction: column; gap: 10px !important; }
@@ -406,17 +381,8 @@
             </div>
         </div>
 
-        <!-- MAPA SIMULADO -->
-        <div class="mapa-simulado">
-            <div class="mapa-grid"></div>
-            <div class="ruta"></div>
-            <div class="pin-repartidor">🛵</div>
-            <div class="pin-destino">📍</div>
-            <div class="etiqueta-mapa">
-                <i class="fas fa-map-marker-alt"></i>
-                <span id="direccionMapa">Cargando dirección...</span>
-            </div>
-        </div>
+        <!-- MAPA INTERACTIVO (Leaflet + OpenStreetMap) -->
+        <div id="mapaSeguimiento"></div>
 
         <!-- BOTONES -->
         <div class="d-flex gap-3">
@@ -481,7 +447,6 @@
         const pedido = JSON.parse(pedidoStr);
 
         document.getElementById('subtituloOrden').textContent = `Orden ${pedido.numero}`;
-        document.getElementById('direccionMapa').textContent = pedido.direccion || 'Dirección de entrega';
 
         actualizarBarra();
         iniciarETA();
@@ -594,10 +559,21 @@
                     <span><i class="fas fa-motorcycle me-1" style="color:var(--rosa-fuerte);"></i> Envío</span>
                     <span>S/ ${pedido.envio.toFixed(2)}</span>
                 </div>
+                ${pedido.codigo_usado ? `
+                <div class="modal-total-row" style="color:#16a34a;">
+                    <span><i class="bi bi-tag-fill me-1"></i> Cupón ${pedido.codigo_usado}</span>
+                    <span>- S/ ${Number(pedido.descuento_aplicado || 0).toFixed(2)}</span>
+                </div>` : ''}
                 <div class="modal-total-row total-final">
                     <span>Total pagado</span>
                     <span class="precio-final">S/ ${pedido.total.toFixed(2)}</span>
                 </div>
+            </div>
+
+            <div id="comprobanteBtns" style="margin-top:12px;">
+                <button class="btn-comprobante" onclick="generarComprobante(${pedido.id}, this)" style="width:100%;padding:10px 0;border-radius:12px;border:2px solid var(--rosa-fuerte);background:transparent;color:var(--rosa-fuerte);font-weight:700;font-size:.85rem;cursor:pointer;transition:all .25s;" onmouseover="this.style.background='var(--rosa-fuerte)';this.style.color='white';" onmouseout="this.style.background='transparent';this.style.color='var(--rosa-fuerte)';">
+                    <i class="bi bi-receipt me-1"></i> Generar Comprobante
+                </button>
             </div>
         `;
 
@@ -605,7 +581,138 @@
         new bootstrap.Modal(document.getElementById('modalDetalles')).show();
     }
 
+    async function generarComprobante(pedidoId, btn) {
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...'; }
+
+        try {
+            const resp = await fetch('/api/comprobantes/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_pedido: pedidoId, tipo: 'Boleta' })
+            });
+
+            if (resp.status === 409) {
+                mostrarToast('Este pedido ya tiene un comprobante', 'warning');
+            } else if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || 'Error al generar comprobante');
+            } else {
+                mostrarToast('Comprobante generado', 'success');
+            }
+
+            descargarPDF(pedidoId);
+        } catch (e) {
+            console.error('Error:', e);
+            mostrarToast(e.message || 'Error al generar comprobante', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-receipt me-1"></i> Generar Comprobante'; }
+        }
+    }
+
+    async function descargarPDF(pedidoId) {
+        try {
+            const res = await fetch(`/api/pedidos/${pedidoId}`);
+            let p;
+            if (res.ok) {
+                p = await res.json();
+            } else {
+                const ls = JSON.parse(localStorage.getItem('massgo_pedido') || '{}');
+                const historial = JSON.parse(localStorage.getItem('massgo_historial_pedidos') || '[]');
+                p = historial.find(h => h.id === pedidoId) || ls;
+                if (!p || !p.id) throw new Error('No se pudo obtener el pedido');
+            }
+
+            const resComp = await fetch(`/api/comprobantes/?id_pedido=${pedidoId}`);
+            const comps = await resComp.json();
+            const comp = comps[0];
+            if (!comp) { mostrarToast('No hay comprobante para este pedido', 'warning'); return; }
+
+            const fecha = comp.fecha ? String(comp.fecha).slice(0, 10) : '—';
+            const tipoLabel = comp.tipo || 'Comprobante';
+
+            const ventana = window.open('', '_blank');
+            ventana.document.write(`
+                <html><head><title>Comprobante ${comp.numero || ''}</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; padding: 40px; max-width: 400px; margin: auto; }
+                    h1 { text-align: center; font-size: 1.5rem; margin-bottom: 4px; color:#FF0066; }
+                    h2 { text-align: center; font-size: 1rem; color: #666; margin-top: 0; font-weight: normal; }
+                    hr { border: none; border-top: 2px dashed #333; margin: 20px 0; }
+                    .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: .9rem; }
+                    .label { color: #666; }
+                    .total { font-size: 1.2rem; font-weight: bold; border-top: 2px solid #333; padding-top: 8px; margin-top: 8px; }
+                    .footer { text-align: center; margin-top: 30px; font-size: .8rem; color: #999; }
+                </style></head><body>
+                <h1>MASSGO</h1>
+                <h2>${tipoLabel} Electrónico</h2>
+                <hr>
+                <div class="row"><span class="label">Cliente</span><span>${comp.cliente || '—'}</span></div>
+                <div class="row"><span class="label">Email</span><span>${comp.email || '—'}</span></div>
+                <div class="row"><span class="label">Documento</span><span>${tipoLabel} ${comp.numero || '—'}</span></div>
+                <div class="row"><span class="label">Fecha</span><span>${fecha}</span></div>
+                <div class="row"><span class="label">Pedido</span><span>#MG-${comp.id_pedido}</span></div>
+                <div class="row"><span class="label">Método Pago</span><span>${comp.metodo_pago || '—'}</span></div>
+                <hr>
+                <div class="row total"><span>Total</span><span>S/ ${Number(comp.monto || p.total || 0).toFixed(2)}</span></div>
+                <div class="footer">Gracias por tu compra &bull; MassGo</div>
+                <script>window.print();window.onafterprint=()=>window.close();<\/script>
+                </body></html>
+            `);
+            ventana.document.close();
+        } catch (e) {
+            console.error('Error al descargar PDF:', e);
+            mostrarToast('Error al generar PDF', 'error');
+        }
+    }
+
+    function initMapSimulado() {
+        const tienda = [-8.1089, -79.0287];
+        const cliente = [-8.1150, -79.0250];
+
+        const map = L.map('mapaSeguimiento').setView(tienda, 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19,
+        }).addTo(map);
+
+        L.marker(tienda).addTo(map)
+            .bindPopup('<b>Tienda Mass</b><br>San Isidro, Trujillo')
+            .openPopup();
+
+        L.marker(cliente).addTo(map)
+            .bindPopup('<b>Destino</b><br>Tu dirección de entrega');
+
+        const waypoints = [
+            L.latLng(tienda),
+            L.latLng(-8.1105, -79.0295),
+            L.latLng(-8.1120, -79.0270),
+            L.latLng(-8.1140, -79.0260),
+            L.latLng(cliente),
+        ];
+
+        L.polyline(waypoints, {
+            color: '#FF0066', weight: 4, opacity: 0.8, dashArray: '10, 6',
+        }).addTo(map);
+
+        let step = 0;
+        const deliveryIcon = L.divIcon({
+            html: '<div style="background:#FF0066;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.3);"><i class="bi bi-motorcycle" style="color:white;font-size:1rem;"></i></div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            className: 'delivery-marker',
+        });
+
+        const moverMarker = L.marker(waypoints[0], { icon: deliveryIcon }).addTo(map);
+
+        setInterval(() => {
+            step = (step + 1) % waypoints.length;
+            moverMarker.setLatLng(waypoints[step]);
+        }, 2000);
+    }
+
     cargarSeguimiento();
+    initMapSimulado();
 </script>
 <script src="js/chatbot.js"></script>
 </body>

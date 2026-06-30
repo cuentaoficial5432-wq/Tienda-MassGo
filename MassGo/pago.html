@@ -257,12 +257,12 @@
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <label class="lbl">Vencimiento (MM/AA)</label>
-                            <input type="text" class="input-tarjeta" placeholder="12/25" maxlength="5" oninput="formatearFecha(this)">
+                            <input type="text" class="input-tarjeta" id="vencimientoTarjeta" placeholder="12/25" maxlength="5" oninput="formatearFecha(this)">
                         </div>
                         <div class="col-6">
                             <label class="lbl">Código de seguridad</label>
                             <div class="position-relative">
-                                <input type="password" class="input-tarjeta" placeholder="•••" maxlength="4">
+                                <input type="password" class="input-tarjeta" id="cvvTarjeta" placeholder="•••" maxlength="4">
                                 <i class="fas fa-eye-slash" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#ccc;cursor:pointer;"></i>
                             </div>
                         </div>
@@ -270,7 +270,7 @@
                     <div class="mb-3">
                         <label class="lbl">Nombre del titular</label>
                         <div class="position-relative">
-                            <input type="text" class="input-tarjeta" placeholder="Ej. Juan Pérez">
+                            <input type="text" class="input-tarjeta" id="titularTarjeta" placeholder="Ej. Juan Pérez">
                             <i class="fas fa-user" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#ccc;"></i>
                         </div>
                     </div>
@@ -391,34 +391,127 @@
         input.value = v;
     }
 
-    function procesarPago() {
+    async function procesarPago() {
         const entregaStr = localStorage.getItem('massgo_entrega');
         if (!entregaStr) return;
         const entrega = JSON.parse(entregaStr);
 
-        // Guardar pedido completo
-        const pedido = {
-            numero: generarNumeroPedido(),
-            items: entrega.items,
-            subtotal: entrega.subtotal,
-            envio: entrega.envio,
-            total: entrega.total,
-            direccion: `${entrega.direccion}, ${entrega.distrito}`,
-            tipoEntrega: entrega.tipoEntrega,
-            metodoPago: metodoPago,
-            fecha: new Date().toISOString()
-        };
-        localStorage.setItem('massgo_pedido', JSON.stringify(pedido));
+        // Validar tarjeta si es el método elegido
+        if (metodoPago === 'tarjeta') {
+            const numTarjeta = document.getElementById('numTarjeta').value.replace(/\s/g, '');
+            const vencimiento = document.getElementById('vencimientoTarjeta').value;
+            const cvv = document.getElementById('cvvTarjeta').value;
+            const titular = document.getElementById('titularTarjeta').value.trim();
+            if (!numTarjeta) { mostrarToast('Ingresa el número de tarjeta', 'warning'); return; }
+            if (!vencimiento) { mostrarToast('Ingresa la fecha de vencimiento', 'warning'); return; }
+            if (!cvv) { mostrarToast('Ingresa el código de seguridad', 'warning'); return; }
+            if (!titular) { mostrarToast('Ingresa el nombre del titular', 'warning'); return; }
+        }
 
         // Mostrar overlay de procesamiento
         document.getElementById('overlayProcesando').classList.add('visible');
         document.getElementById('btnPagar').disabled = true;
 
-        // Simular procesamiento y redirigir
-        setTimeout(() => {
+        try {
+            let userId = 1;
+            try {
+                const { data: { user } } = await massgo.auth.getUser();
+                if (user?.id) {
+                    const u = await massgo.from('usuario').select('id_usuario').eq('auth_id', user.id).limit(1);
+                    if (u?.data?.[0]?.id_usuario) userId = u.data[0].id_usuario;
+                }
+            } catch (e) { /* fallback a userId=1 */ }
+
+            const items = (entrega.items || []).map(i => ({
+                id_producto: i.id,
+                cantidad: i.cantidad,
+                precio_unitario: i.precio
+            }));
+
+            const pedidoPayload = {
+                id_usuario: userId,
+                total: entrega.total,
+                estado: 'Preparando',
+                items: items,
+                direccion_entrega: `${entrega.direccion || ''}, ${entrega.distrito || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, ''),
+                codigo_usado: entrega.codigo_usado || null,
+                descuento_aplicado: entrega.descuento_aplicado || 0,
+                id_codigo_descuento: entrega.id_codigo_descuento || null,
+                metodo_pago: metodoPago,
+                fecha_programada: entrega.fecha_programada || '',
+                hora_programada: entrega.hora_programada || '',
+            };
+
+            const res = await fetch('/api/pedidos/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pedidoPayload)
+            });
+
+            let pedidoCreado;
+            if (res.ok) {
+                pedidoCreado = await res.json();
+            } else {
+                // Any non-200 response
+                let errMsg = 'Error al crear pedido';
+                try { const errData = await res.json(); errMsg = errData.detail || errMsg; } catch(e) {}
+                document.getElementById('overlayProcesando').classList.remove('visible');
+                document.getElementById('btnPagar').disabled = false;
+                mostrarToast(errMsg, 'error');
+                return;
+            }
+
+            const pedido = {
+                numero: `#${pedidoCreado.codigo_seguimiento}`,
+                id: pedidoCreado?.id_pedido || null,
+                items: entrega.items,
+                subtotal: entrega.subtotal,
+                envio: entrega.envio,
+                total: entrega.total,
+                direccion: `${entrega.direccion}, ${entrega.distrito}`,
+                tipoEntrega: entrega.tipoEntrega,
+                metodoPago: metodoPago,
+                fecha: new Date().toISOString(),
+                codigo_usado: entrega.codigo_usado || null,
+                descuento_aplicado: entrega.descuento_aplicado || 0,
+                fecha_programada: entrega.fecha_programada || '',
+                hora_programada: entrega.hora_programada || '',
+            };
+            localStorage.setItem('massgo_pedido', JSON.stringify(pedido));
+
+            if (pedidoCreado) {
+                const historial = JSON.parse(localStorage.getItem('massgo_historial')) || [];
+                entrega.items.forEach(item => {
+                    if (!historial.includes(item.id)) historial.push(item.id);
+                });
+                localStorage.setItem('massgo_historial', JSON.stringify(historial.slice(-20)));
+            }
+
+            localStorage.removeItem('massgo_descuento');
             vaciarCarrito();
             window.location.href = 'confirmacion.html';
-        }, 2200);
+        } catch (e) {
+            console.error('Error crítico al procesar pago:', e);
+            document.getElementById('overlayProcesando').classList.remove('visible');
+            document.getElementById('btnPagar').disabled = false;
+
+            // Show error modal instead of silent redirect
+            const modalHtml = `
+                <div class="modal-overlay" id="modalErrorPago" style="display:flex;z-index:99999;">
+                    <div class="modal-contenido" style="max-width:420px;text-align:center;padding:40px 32px;">
+                        <div style="width:72px;height:72px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                            <i class="bi bi-x-circle" style="font-size:2rem;color:#dc2626;"></i>
+                        </div>
+                        <h5 style="font-weight:800;margin-bottom:8px;">Error al procesar pago</h5>
+                        <p style="color:#6b7280;font-size:.88rem;margin-bottom:4px;">${e.message || 'No se pudo conectar con el servidor'}</p>
+                        <p style="color:#9ca3af;font-size:.78rem;">Verifica que el backend esté ejecutándose y vuelve a intentarlo.</p>
+                        <button onclick="document.getElementById('modalErrorPago')?.remove();" class="btn btn-danger rounded-pill px-5 mt-3" style="background:var(--rosa-fuerte);border:none;">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
     }
 
     cargarResumen();

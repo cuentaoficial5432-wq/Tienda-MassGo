@@ -19,6 +19,8 @@ from api.dashboard import router as dashboard_router
 from api.categorias import router as categorias_router
 from api.comprobantes import router as comprobantes_router
 from api.whatsapp import router as whatsapp_router
+from api.puntos import router as puntos_router
+from api.descuentos import router as descuentos_router
 from ai.routes import router as ai_router
 
 logging.basicConfig(
@@ -61,6 +63,8 @@ app.include_router(dashboard_router)
 app.include_router(categorias_router)
 app.include_router(comprobantes_router)
 app.include_router(whatsapp_router)
+app.include_router(puntos_router)
+app.include_router(descuentos_router)
 app.include_router(ai_router)
 
 # ── Servir archivos estáticos (frontend) ──

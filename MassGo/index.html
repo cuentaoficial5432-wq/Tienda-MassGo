@@ -51,6 +51,8 @@
         .cc-abarrotes .cat-ico-wrap { background: #FFF0E6; }
         .cc-abarrotes::before { background: #FF6B35; }
         .cc-abarrotes:hover { box-shadow: 0 10px 28px rgba(255, 107, 53, 0.15); }
+
+        @keyframes pulse { 0%, 100% { transform: translateY(-50%) scale(1); } 50% { transform: translateY(-50%) scale(1.1); } }
     </style>
 </head>
 
@@ -74,6 +76,7 @@
                 <button type="button" data-bs-target="#carruselHero" data-bs-slide-to="3"></button>
                 <button type="button" data-bs-target="#carruselHero" data-bs-slide-to="4"></button>
                 <button type="button" data-bs-target="#carruselHero" data-bs-slide-to="5"></button>
+                <button type="button" data-bs-target="#carruselHero" data-bs-slide-to="6"></button>
             </div>
 
             <!-- Slides -->
@@ -114,7 +117,7 @@
         </div>
     </section>
 
-    <!-- CATEGORIAS -->
+    <!-- CATEGORIAS (siempre visible) -->
     <section class="seccion-categorias" id="categorias">
         <div class="container">
             <div class="d-flex align-items-center justify-content-between mb-3">
@@ -122,48 +125,94 @@
                     <i class="bi bi-grid-fill"></i> Explorar Categorías
                 </h3>
                 <a href="#" class="ver-todas-link"
+                    onclick="event.preventDefault(); document.getElementById('mas-productos').scrollIntoView({behavior:'smooth'})"
                     style="color:var(--rosa-fuerte);font-size:.85rem;font-weight:600;text-decoration:none;">
-                    Ver todas
+                    Ver todo <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
             <div class="grid-cats-pro" id="gridCategorias"></div>
         </div>
     </section>
 
-    <!-- RECOMENDADOS PARA TI (4 productos, IA placeholder) -->
-    <section class="seccion-productos" id="catalogo">
-        <div class="container">
-            <h3 class="titulo-seccion"><i class="fas fa-star"></i> Recomendados para ti</h3>
-            <div class="row g-4" id="gridProductos"></div>
-        </div>
-    </section>
+    <div id="contenidoPrincipal">
+        <!-- RECOMENDADOS PARA TI (4 productos, IA placeholder) -->
+        <section class="seccion-productos" id="catalogo">
+            <div class="container">
+                <h3 class="titulo-seccion"><i class="bi bi-star-fill"></i> Recomendados para ti</h3>
+                <div class="row g-4" id="gridProductos"></div>
+            </div>
+        </section>
 
-    <!-- OFERTAS FLASH -->
-    <section class="seccion-rosada" id="seccionOfertas">
-        <div class="container">
-            <h3 class="titulo-seccion">
-                <i class="fas fa-bolt"></i> Ofertas Relámpago
-                <span class="ms-auto badge" style="background:var(--rosa-fuerte);font-size:.9rem;">
-                    <i class="fas fa-clock me-1"></i><span id="timerOferta">02:30:00</span>
-                </span>
-            </h3>
-            <div class="row g-4" id="ofertasFlashGrid"></div>
-        </div>
-    </section>
+        <!-- OFERTAS FLASH (horizontal scroll row) -->
+        <section class="seccion-rosada" id="seccionOfertas">
+            <div class="container">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                    <h3 class="titulo-seccion mb-0">
+                        <i class="bi bi-lightning-fill"></i> Ofertas Relámpago
+                    </h3>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge d-none d-sm-inline-flex align-items-center gap-1"
+                              style="background:var(--rosa-fuerte);font-size:.85rem;padding:6px 12px;">
+                            <i class="bi bi-clock"></i><span id="timerOferta">02:30:00</span>
+                        </span>
+                        <button class="btn btn-sm px-3 py-1" onclick="verTodasOfertas()"
+                            style="background:var(--rosa-fuerte);color:white;border:none;border-radius:50px;font-weight:600;font-size:.82rem;">
+                            Ver más <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 d-sm-none mb-2">
+                    <span class="badge d-inline-flex align-items-center gap-1"
+                          style="background:var(--rosa-fuerte);font-size:.75rem;padding:4px 10px;">
+                        <i class="bi bi-clock"></i><span id="timerOfertaMobile">02:30:00</span>
+                    </span>
+                </div>
+                <div class="ofertas-scroll-wrap">
+                    <div class="ofertas-scroll-row" id="ofertasFlashRow"></div>
+                </div>
+            </div>
+        </section>
 
-    <!-- CATALOGO DE PRODUCTOS (8 + Ver más) -->
-    <section class="seccion" id="mas-productos">
+        <!-- CATALOGO DE PRODUCTOS (8 + Ver más) -->
+        <section class="seccion" id="mas-productos">
+            <div class="container">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <h3 class="titulo-seccion mb-0"><i class="bi bi-grid-fill"></i> Catálogo de productos</h3>
+                        <span class="catalogo-counter" id="catalogoCounter">Cargando...</span>
+                    </div>
+                    <button id="btnLimpiarFiltroCatalogo" class="btn btn-sm btn-outline-secondary rounded-pill d-none"
+                        onclick="limpiarFiltroCatalogo()">
+                        <i class="bi bi-x-lg me-1"></i> Ver todos
+                    </button>
+                </div>
+                <div class="row g-4" id="gridCatalogo"></div>
+                <div id="wrapVerMasCatalogo" class="text-center mt-4" style="display:none;">
+                    <button id="btnVerMasCatalogo" class="btn px-4 py-2"
+                        style="background:white;border:2px solid var(--rosa-fuerte);color:var(--rosa-fuerte);border-radius:25px;font-weight:600;font-size:.9rem;transition:all .2s;">
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- /#contenidoPrincipal -->
+
+    <!-- VISTA POR CATEGORIA (reemplaza contenido principal) -->
+    <section class="seccion-categoria-productos" id="productos-por-categoria">
         <div class="container">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h3 class="titulo-seccion mb-0"><i class="bi bi-grid-fill"></i> Catálogo de productos</h3>
-                <button id="btnLimpiarFiltroCatalogo" class="btn btn-sm btn-outline-secondary rounded-pill d-none"
-                    onclick="limpiarFiltroCatalogo()">
-                    <i class="bi bi-x-lg me-1"></i> Ver todos
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div>
+                    <h3 class="titulo-seccion mb-0"><i class="bi bi-grid-fill"></i> <span id="categoriaNombre"></span></h3>
+                    <span class="catalogo-counter" id="categoriaCounter"></span>
+                </div>
+                <button class="btn btn-sm px-3 py-1" onclick="limpiarCategoriaProductos()"
+                    style="background:var(--rosa-fuerte);color:white;border:none;border-radius:50px;font-weight:600;font-size:.85rem;">
+                    <i class="bi bi-x-lg me-1"></i> Cerrar
                 </button>
             </div>
-            <div class="row g-4" id="gridCatalogo"></div>
-            <div id="wrapVerMasCatalogo" class="text-center mt-4" style="display:none;">
-                <button id="btnVerMasCatalogo" class="btn px-4 py-2"
+            <div class="row g-4" id="categoriaProductosGrid"></div>
+            <div id="wrapVerMasCategoria" class="text-center mt-4" style="display:none;">
+                <button id="btnVerMasCategoria" class="btn px-4 py-2"
                     style="background:white;border:2px solid var(--rosa-fuerte);color:var(--rosa-fuerte);border-radius:25px;font-weight:600;font-size:.9rem;transition:all .2s;">
                 </button>
             </div>
@@ -231,11 +280,12 @@
     <script src="js/massgo.js"></script>
     <script src="js/navbar.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/chatbot.js"></script>
     <script>
         fetchProductos();
         iniciarTimer();
+        // Cargar chatbot
     </script>
+    <script src="js/chatbot.js"></script>
 </body>
 
 </html>

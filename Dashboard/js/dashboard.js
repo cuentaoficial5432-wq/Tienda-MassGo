@@ -20,6 +20,13 @@ let pedidosPage = 1;
 let usuariosPage = 1;
 let categoriasPage = 1;
 let comprobantesPage = 1;
+let descuentosPage = 1;
+let descuentosData = [];
+
+// Real-time auto-refresh
+let autoRefreshInterval = null;
+let pedidosCountAnterior = 0;
+const AUTO_REFRESH_MS = 15000;
 
 // ===== API CLIENT =====
 async function apiFetch(endpoint, options = {}) {
@@ -49,10 +56,17 @@ function showView(viewName) {
     if (viewName === 'categorias') { renderCategorias(); renderPaginacionCategorias(); }
     if (viewName === 'comprobantes') { renderComprobantes(); renderPaginacionComprobantes(); }
     if (viewName === 'whatsapp') { renderWhatsApp(); }
+    if (viewName === 'descuentos') { renderDescuentos(); renderPaginacionDescuentos(); }
 }
 
 // ===== SIDEBAR TOGGLE =====
 document.addEventListener('DOMContentLoaded', async function () {
+    // Login check
+    const overlay = document.getElementById('loginOverlay');
+    if (overlay && sessionStorage.getItem('massgo_admin') === 'true') {
+        overlay.style.display = 'none';
+    }
+
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('dashSidebar');
     if (toggle && sidebar) {
@@ -98,6 +112,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (searchComp) searchComp.addEventListener('input', function () { comprobantesPage = 1; renderComprobantes(); renderPaginacionComprobantes(); });
     const filterTipoComp = document.getElementById('filterTipoComprobante');
     if (filterTipoComp) filterTipoComp.addEventListener('change', function () { comprobantesPage = 1; renderComprobantes(); renderPaginacionComprobantes(); });
+    const searchDesc = document.getElementById('searchDescuentos');
+    if (searchDesc) searchDesc.addEventListener('input', function () { descuentosPage = 1; renderDescuentos(); renderPaginacionDescuentos(); });
 
     try {
         await Promise.all([
@@ -118,6 +134,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     renderPaginacionCategorias();
     renderComprobantes();
     renderPaginacionComprobantes();
+
+    // Inicializar contador de pedidos para detección de nuevos
+    pedidosCountAnterior = pedidosData.length;
+
+    // Iniciar auto-refresh en tiempo real
+    iniciarAutoRefresh();
 });
 
 function mostrarErrorPanel(msg) {
@@ -142,11 +164,12 @@ function mostrarErrorPanel(msg) {
 }
 
 async function cargarDatosIniciales() {
-    [productosData, pedidosData, categoriasData, comprobantesData] = await Promise.all([
-        apiFetch('/productos?limite=100'),
-        apiFetch('/pedidos?limite=100'),
+    [productosData, pedidosData, categoriasData, comprobantesData, descuentosData] = await Promise.all([
+        apiFetch('/productos/?limite=100'),
+        apiFetch('/pedidos/?limite=100'),
         apiFetch('/categorias/'),
         apiFetch('/comprobantes/?limite=100'),
+        apiFetch('/descuentos/'),
     ]);
     if (!Array.isArray(productosData)) throw new Error('Formato inválido en /productos');
     if (!Array.isArray(pedidosData)) throw new Error('Formato inválido en /pedidos');
@@ -351,6 +374,7 @@ function verDetallePedido(id) {
                 <div class="detalle-info-row"><span class="label">Estado</span><span class="value"><span class="badge-dash ${badgePedido(p.estado)}">${p.estado}</span></span></div>
                 <div class="detalle-info-row"><span class="label">Fecha</span><span class="value">${fecha}</span></div>
                 <div class="detalle-info-row"><span class="label">Total</span><span class="value" style="color:var(--dash-fucsia);">S/ ${Number(p.total).toFixed(2)}</span></div>
+                ${p.codigo_usado ? `<div class="detalle-info-row"><span class="label">Cupón</span><span class="value" style="font-weight:700;">${p.codigo_usado} ${p.descuento_aplicado > 0 ? `(-S/ ${Number(p.descuento_aplicado).toFixed(2)})` : ''}</span></div>` : ''}
             </div>
             <div class="detalle-info-box">
                 <h6>Cliente & Pago</h6>
@@ -363,8 +387,7 @@ function verDetallePedido(id) {
         <div class="detalle-info-box" style="margin-bottom:16px;">
             <h6>Envío</h6>
             <div class="detalle-info-row"><span class="label">Dirección</span><span class="value">${envio.direccion_entrega || '—'}</span></div>
-            <div class="detalle-info-row"><span class="label">Estado envío</span><span class="value">${envio.estado || '—'}</span></div>
-            <div class="detalle-info-row"><span class="label">Fecha envío</span><span class="value">${envio.fecha_envio ? String(envio.fecha_envio).slice(0, 10) : '—'}</span></div>
+            ${envio.fecha_envio ? `<div class="detalle-info-row"><span class="label">${String(envio.fecha_envio).includes(' - ') ? 'Programado' : 'Fecha'}</span><span class="value">${String(envio.fecha_envio)}</span></div>` : ''}
         </div>` : ''}
         <h6 style="font-size:.8rem;font-weight:700;margin:0 0 8px 0;color:var(--dash-text-muted);text-transform:uppercase;letter-spacing:0.3px;">Productos</h6>
         <table class="detalle-productos-table">
@@ -388,7 +411,7 @@ let usuariosDataRaw = [];
 
 async function cargarUsuarios() {
     try {
-        const data = await apiFetch('/usuarios?limite=100');
+        const data = await apiFetch('/usuarios/?limite=100');
         usuariosDataRaw = Array.isArray(data) ? data : [];
         usuariosData = usuariosDataRaw.map(u => {
             const pedidosUser = pedidosData.filter(p => p.id_usuario === u.id_usuario);
@@ -477,7 +500,21 @@ function verDetalleUsuario(id) {
 }
 
 // ===== ACCIONES PRODUCTOS =====
+// ===== PRODUCTOS =====
+function poblarCategoriasSelect() {
+    const sel = document.getElementById('inputCategoriaProducto');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Seleccionar categoría</option>';
+    (categoriasData || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id_categoria;
+        opt.textContent = c.nombre;
+        sel.appendChild(opt);
+    });
+}
+
 function abrirModalProducto() {
+    poblarCategoriasSelect();
     productoEditandoId = null;
     document.getElementById('modalProductoTitulo').innerHTML = '<i class="bi bi-plus-circle"></i> Nuevo Producto';
     document.getElementById('inputNombreProducto').value = '';
@@ -498,6 +535,7 @@ function cerrarModalProducto() {
 function editarProducto(id) {
     const p = productosData.find(x => x.id_producto === id);
     if (!p) return;
+    poblarCategoriasSelect();
     productoEditandoId = id;
     document.getElementById('modalProductoTitulo').innerHTML = '<i class="bi bi-pencil-fill"></i> Editar Producto';
     document.getElementById('inputNombreProducto').value = p.nombre || '';
@@ -1159,6 +1197,165 @@ function renderPaginacionCircular(containerId, data, currentPage, fnName, labelS
     container.innerHTML = html;
 }
 
+// ===== REAL-TIME AUTO-REFRESH =====
+function iniciarAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(refreshDashboardData, AUTO_REFRESH_MS);
+}
+
+async function refreshDashboardData() {
+    try {
+        const viewActiva = document.querySelector('.dash-view.active')?.id;
+        const [nuevosProductos, nuevosPedidos, dashboardData, nuevosDescuentos, nuevosComprobantes] = await Promise.all([
+            apiFetch('/productos/?limite=100').catch(() => null),
+            apiFetch('/pedidos/?limite=100').catch(() => null),
+            apiFetch('/dashboard/data').catch(() => null),
+            apiFetch('/descuentos/').catch(() => null),
+            apiFetch('/comprobantes/?limite=100').catch(() => null),
+        ]);
+
+        if (nuevosProductos) productosData = nuevosProductos;
+        if (nuevosDescuentos) descuentosData = nuevosDescuentos;
+        if (nuevosComprobantes) comprobantesData = nuevosComprobantes;
+        if (nuevosPedidos) {
+            const nuevosCount = nuevosPedidos.length;
+            if (pedidosCountAnterior > 0 && nuevosCount > pedidosCountAnterior) {
+                const diff = nuevosCount - pedidosCountAnterior;
+                mostrarNotificacion(`🆕 ${diff} nuevo${diff > 1 ? 's' : ''} pedido${diff > 1 ? 's' : ''} recibido${diff > 1 ? 's' : ''}`);
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.value = 800;
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } catch (e) { /* audio no disponible */ }
+            }
+            pedidosCountAnterior = nuevosCount;
+            pedidosData = nuevosPedidos;
+        }
+
+        if (viewActiva === 'view-dashboard' && dashboardData) {
+            document.getElementById('metrica-pendientes').textContent = String(dashboardData.metricas?.pedidos_pendientes ?? 0);
+            document.getElementById('metrica-pedidos').textContent = String(dashboardData.metricas?.total_pedidos ?? 0);
+            document.getElementById('metrica-usuarios').textContent = String(dashboardData.metricas?.usuarios_activos ?? 0);
+
+            const recientes = dashboardData.pedidos_recientes || [];
+            const tbody = document.getElementById('dashboardPedidosBody');
+            if (tbody) {
+                tbody.innerHTML = recientes.length
+                    ? recientes.map(p => {
+                        const estados = { 'Preparando': 'badge-preparando', 'En despacho': 'badge-en-camino', 'Entregado': 'badge-entregado', 'Cancelado': 'badge-cancelado', 'Pendiente': 'badge-preparando' };
+                        return `<tr>
+                            <td><span class="order-id">#MG-${p.id_pedido}</span></td>
+                            <td>${p.cliente || `Usuario #${p.id_usuario || ''}`}</td>
+                            <td>S/ ${Number(p.total).toFixed(2)}</td>
+                            <td><span class="badge-dash ${estados[p.estado] || 'badge-preparando'}">${p.estado}</span></td>
+                        </tr>`;
+                    }).join('')
+                    : '<tr><td colspan="4" class="text-center py-3 text-muted">No hay pedidos recientes</td></tr>';
+            }
+
+            const alertas = dashboardData.alertas_stock || [];
+            const container = document.getElementById('dashboardAlertasStock');
+            if (container) {
+                container.innerHTML = alertas.length
+                    ? alertas.map(p => {
+                        const isOut = p.stock === 0 || p.estado === 'Agotado';
+                        return `<div class="stock-item ${isOut ? 'stock-out' : 'stock-low'}">
+                            <div class="stock-img" style="background:${isOut ? '#FFE6EE' : '#FFF0E6'};">
+                                <i class="bi ${isOut ? 'bi-bag-x' : 'bi-basket'}" style="color:${isOut ? '#E6005C' : '#FF6B35'};"></i>
+                            </div>
+                            <div class="stock-info">
+                                <span class="stock-name">${p.nombre}</span>
+                                <span class="stock-meta">${isOut ? '<strong>Agotado</strong>' : `Quedan <strong>${p.stock}</strong> unidades`}</span>
+                            </div>
+                            <span class="stock-badge ${isOut ? 'badge-stock-agotado' : 'badge-stock-bajo'}">${isOut ? 'Agotado' : 'Stock Bajo'}</span>
+                        </div>`;
+                    }).join('')
+                    : '<div class="text-center py-3 text-muted">No hay alertas de stock</div>';
+            }
+        }
+
+        if (viewActiva === 'view-productos') { renderProductos(); renderPaginacionProductos(); }
+        if (viewActiva === 'view-pedidos') { renderPedidos(); renderPaginacionPedidos(); }
+        if (viewActiva === 'view-comprobantes') { renderComprobantes(); renderPaginacionComprobantes(); }
+    } catch (e) {
+        // Silenciar errores de auto-refresh para no molestar
+    }
+}
+
+// ===== NOTIFICACIONES EN TIEMPO REAL =====
+function mostrarNotificacion(mensaje) {
+    const notifDot = document.querySelector('.notif-dot');
+    if (notifDot) {
+        notifDot.classList.add('active');
+        notifDot.textContent = '!';
+    }
+
+    const existing = document.querySelector('.notificacion-flotante');
+    if (existing) existing.remove();
+
+    const div = document.createElement('div');
+    div.className = 'notificacion-flotante';
+    div.innerHTML = mensaje;
+    div.style.cssText = `
+        position: fixed; bottom: 24px; right: 24px;
+        background: linear-gradient(135deg, #FF0066, #ff4d8a);
+        color: white; padding: 14px 22px; border-radius: 16px;
+        font-weight: 600; font-size: .9rem; z-index: 10000;
+        box-shadow: 0 8px 30px rgba(254,12,101,.4);
+        animation: slideInUp .4s ease; max-width: 360px;
+        display: flex; align-items: center; gap: 10px;
+        cursor: pointer;
+    `;
+    document.body.appendChild(div);
+    setTimeout(() => {
+        div.style.transition = 'opacity .5s, transform .5s';
+        div.style.opacity = '0';
+        div.style.transform = 'translateY(20px)';
+        setTimeout(() => div.remove(), 500);
+    }, 5000);
+    div.addEventListener('click', () => {
+        div.remove();
+        if (notifDot) notifDot.classList.remove('active');
+        showView('pedidos');
+    });
+}
+
+// Insertar estilo de notificación
+(function injectNotifStyle() {
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .notif-dot {
+            display: none !important;
+            position: absolute; top: 4px; right: 4px;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: #FF0066; color: white;
+            font-size: .65rem; font-weight: 800;
+            align-items: center; justify-content: center;
+            animation: pulseNotif 1.5s infinite;
+            border: 2px solid white;
+            z-index: 2;
+        }
+        .notif-dot.active { display: flex !important; }
+        @keyframes pulseNotif {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .btn-notif { position: relative; }
+    `;
+    document.head.appendChild(style);
+})();
+
 // ===== MODAL CLOSE ON OVERLAY =====
 document.addEventListener('click', function (e) {
     const modal = document.getElementById('modalProducto');
@@ -1169,4 +1366,180 @@ document.addEventListener('click', function (e) {
     if (modal3 && modal3.classList.contains('show') && e.target === modal3) cerrarModalCategoria();
     const modal4 = document.getElementById('modalDetalleComprobante');
     if (modal4 && modal4.classList.contains('show') && e.target === modal4) cerrarDetalleComprobante();
+    const modal5 = document.getElementById('modalDescuento');
+    if (modal5 && modal5.classList.contains('show') && e.target === modal5) cerrarModalDescuento();
+});
+
+// ===== DESCUENTOS CRUD =====
+const DESCUENTOS_PAGE_SIZE = 15;
+
+function renderDescuentos() {
+    const q = (document.getElementById('searchDescuentos')?.value || '').toLowerCase();
+    let lista = descuentosData;
+    if (q) {
+        lista = lista.filter(d =>
+            String(d.codigo).toLowerCase().includes(q) ||
+            String(d.descripcion || '').toLowerCase().includes(q) ||
+            String(d.tipo || '').toLowerCase().includes(q)
+        );
+    }
+    const start = (descuentosPage - 1) * DESCUENTOS_PAGE_SIZE;
+    const pageItems = lista.slice(start, start + DESCUENTOS_PAGE_SIZE);
+    const container = document.getElementById('descuentosList');
+    if (!container) return;
+
+    if (pageItems.length === 0) {
+        container.innerHTML = '<div class="text-center py-5 text-muted">No hay códigos de descuento</div>';
+        return;
+    }
+
+    container.innerHTML = pageItems.map(d => {
+        const badge = d.activo ? 'success' : 'secondary';
+        const valor = d.tipo === 'porcentaje' ? `${d.valor}%` : `S/ ${parseFloat(d.valor).toFixed(2)}`;
+        const usos = d.usos || 0;
+        const maxUso = d.uso_maximo || '∞';
+        const min = parseFloat(d.monto_minimo || 0).toFixed(2);
+        const exp = d.fecha_expiracion ? d.fecha_expiracion.slice(0, 10) : '—';
+        return `<div class="prod-card">
+            <span class="prod-col" style="width:50px;font-weight:600;">${d.id}</span>
+            <span class="prod-col prod-col--nombre" style="flex:1;font-weight:700;font-family:monospace;letter-spacing:.5px;">${d.codigo}</span>
+            <span class="prod-col" style="width:100px;">${d.tipo === 'porcentaje' ? '%' : 'Fijo'}</span>
+            <span class="prod-col" style="width:80px;text-align:center;font-weight:700;">${valor}</span>
+            <span class="prod-col" style="width:90px;text-align:center;">${usos}</span>
+            <span class="prod-col" style="width:90px;text-align:center;">${maxUso}</span>
+            <span class="prod-col" style="width:100px;text-align:center;">S/ ${min}</span>
+            <span class="prod-col" style="width:70px;text-align:center;"><span class="badge bg-${badge}" style="font-size:.7rem;">${d.activo ? 'Sí' : 'No'}</span></span>
+            <span class="prod-col" style="width:100px;font-size:.75rem;">${exp}</span>
+            <span class="prod-col prod-col--accion" style="width:100px;text-align:center;">
+                <button class="btn-action btn-edit" onclick="editarDescuento(${d.id})" title="Editar"><i class="bi bi-pencil-fill"></i></button>
+                <button class="btn-action btn-delete" onclick="eliminarDescuento(${d.id})" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>
+            </span>
+        </div>`;
+    }).join('');
+}
+
+function renderPaginacionDescuentos() {
+    const q = (document.getElementById('searchDescuentos')?.value || '').toLowerCase();
+    let lista = descuentosData;
+    if (q) lista = lista.filter(d => String(d.codigo).toLowerCase().includes(q));
+    const totalPages = Math.ceil(lista.length / DESCUENTOS_PAGE_SIZE);
+    const container = document.getElementById('paginacionDescuentos');
+    if (!container) return;
+    let html = `<div class="paginacion">`;
+    html += `<button class="pag-btn" onclick="descuentosPage=1;renderDescuentos();renderPaginacionDescuentos();" ${descuentosPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i><i class="bi bi-chevron-left"></i></button>`;
+    html += `<button class="pag-btn" onclick="descuentosPage--;renderDescuentos();renderPaginacionDescuentos();" ${descuentosPage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>`;
+    html += `<span class="pag-info">Pág. ${descuentosPage} de ${totalPages || 1}</span>`;
+    html += `<button class="pag-btn" onclick="descuentosPage++;renderDescuentos();renderPaginacionDescuentos();" ${descuentosPage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>`;
+    html += `<button class="pag-btn" onclick="descuentosPage=${totalPages || 1};renderDescuentos();renderPaginacionDescuentos();" ${descuentosPage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i><i class="bi bi-chevron-right"></i></button>`;
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+let editingDescuentoId = null;
+
+function abrirModalDescuento(data) {
+    editingDescuentoId = data?.id || null;
+    document.getElementById('modalDescuentoTitulo').textContent = editingDescuentoId ? 'Editar Código de Descuento' : 'Nuevo Código de Descuento';
+    document.getElementById('inputCodigoDescuento').value = data?.codigo || '';
+    document.getElementById('inputTipoDescuento').value = data?.tipo || 'porcentaje';
+    document.getElementById('inputValorDescuento').value = data?.valor || '';
+    document.getElementById('inputMinimoDescuento').value = data?.monto_minimo || 0;
+    document.getElementById('inputUsoMaximoDescuento').value = data?.uso_maximo || '';
+    document.getElementById('inputExpiracionDescuento').value = data?.fecha_expiracion ? data.fecha_expiracion.slice(0, 10) : '';
+    document.getElementById('inputActivoDescuento').value = data?.activo !== false ? 'true' : 'false';
+    document.getElementById('inputDescripcionDescuento').value = data?.descripcion || '';
+    document.getElementById('modalDescuento').classList.add('show');
+}
+
+function editarDescuento(id) {
+    const d = descuentosData.find(x => x.id === id);
+    if (d) abrirModalDescuento(d);
+}
+
+function cerrarModalDescuento() {
+    document.getElementById('modalDescuento').classList.remove('show');
+    editingDescuentoId = null;
+}
+
+async function guardarDescuento() {
+    const codigo = document.getElementById('inputCodigoDescuento').value.trim().toUpperCase();
+    if (!codigo) { alert('Ingresa un código'); return; }
+    const payload = {
+        codigo,
+        tipo_descuento: document.getElementById('inputTipoDescuento').value,
+        valor: parseFloat(document.getElementById('inputValorDescuento').value) || 0,
+        monto_minimo: parseFloat(document.getElementById('inputMinimoDescuento').value) || 0,
+        uso_maximo: parseInt(document.getElementById('inputUsoMaximoDescuento').value) || null,
+        fecha_expiracion: document.getElementById('inputExpiracionDescuento').value || null,
+        activo: document.getElementById('inputActivoDescuento').value === 'true',
+        descripcion: document.getElementById('inputDescripcionDescuento').value.trim(),
+    };
+    try {
+        if (editingDescuentoId) {
+            await apiFetch(`/descuentos/${editingDescuentoId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            const idx = descuentosData.findIndex(d => d.id === editingDescuentoId);
+            if (idx >= 0) descuentosData[idx] = { ...descuentosData[idx], ...payload };
+        } else {
+            const nuevo = await apiFetch('/descuentos/', { method: 'POST', body: JSON.stringify(payload) });
+            descuentosData.push(nuevo);
+        }
+        cerrarModalDescuento();
+        renderDescuentos();
+        renderPaginacionDescuentos();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+async function eliminarDescuento(id) {
+    if (!confirm('¿Eliminar este código de descuento?')) return;
+    try {
+        await apiFetch(`/descuentos/${id}`, { method: 'DELETE' });
+        descuentosData = descuentosData.filter(d => d.id !== id);
+        renderDescuentos();
+        renderPaginacionDescuentos();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+// ── LOGIN / LOGOUT ──
+function cerrarSesion() {
+    document.getElementById('modalLogout').classList.add('show');
+}
+
+function confirmarCerrarSesion() {
+    document.getElementById('modalLogout').classList.remove('show');
+    sessionStorage.removeItem('massgo_admin');
+    location.reload();
+}
+
+function iniciarSesion() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+    const error = document.getElementById('loginError');
+    if (user === 'massgo' && pass === 'grupo2') {
+        sessionStorage.setItem('massgo_admin', 'true');
+        document.getElementById('loginOverlay').style.display = 'none';
+        refreshDashboardData();
+    } else {
+        error.textContent = 'Credenciales incorrectas';
+        error.classList.add('show');
+        document.getElementById('loginPass').value = '';
+        document.getElementById('loginPass').focus();
+    }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    const passField = document.getElementById('loginPass');
+    if (passField) {
+        passField.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') iniciarSesion();
+        });
+    }
+    const userField = document.getElementById('loginUser');
+    if (userField) {
+        userField.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') document.getElementById('loginPass').focus();
+        });
+    }
 });
