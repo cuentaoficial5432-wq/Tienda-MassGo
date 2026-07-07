@@ -48,7 +48,7 @@ Proyecto orientado al sector:
 
 ## 📌 Estado del Proyecto
 
-🚧 En desarrollo
+Concluido
 
 ---
 
