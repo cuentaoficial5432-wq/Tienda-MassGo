@@ -50,7 +50,6 @@ Los usuarios pueden realizar compras desde la web y recibir sus productos en men
 | **CSS3** | Estilos, animaciones y diseño responsive |
 | **JavaScript** | Lógica de negocio del lado del cliente |
 | **Bootstrap 5** | Framework de componentes UI |
-| **Chart.js** | Gráficos del dashboard administrativo |
 | **LocalStorage** | Persistencia del carrito y sesión |
 
 ### Backend
@@ -372,11 +371,13 @@ python -m pytest test_ai_predictions.py -v     # 9 tests de predicciones
 
 | Rol | Integrante |
 |---|---|
-| **Project Manager** | Por definir |
-| **Frontend Developer** | Por definir |
-| **Backend Developer** | Por definir |
-| **Data Scientist / IA** | Por definir |
-| **Tester / QA** | Por definir |
+| **Director del Proyecto** | Wilmer Antonio Mendo Anhuamán |
+| **Responsable de Calidad** | Cristhian Eduardo Atalay Benites |
+| **Programador - Tester** | Jerson Dominguez Terrones |
+| **Analista - Diseñador** | Jose Estibb Anhuaman Delgado |
+| **Responsable de Datos de la IA** | Jeans Fabricio Rondo Nuñez Del Arco |
+| **Marketing y Comunicaciones** | Maricielo Yamile Abanto Nuñez |
+| **Cliente** | Kevin Moreno Bobadilla |
 
 Proyecto orientado al sector:
 **Retail de Proximidad · Grocery Tech · Comercio Electrónico Hiperlocal · Quick Commerce**
