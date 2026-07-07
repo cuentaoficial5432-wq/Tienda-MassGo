@@ -58,12 +58,6 @@ Tiendas Mass — San Isidro, Trujillo, Perú
 
 ---
 
-## 📷 Vista del Proyecto
-
-Próximamente se agregarán capturas del sistema y demostraciones de funcionamiento.
-
----
-
 ## 📄 Licencia
 
 Proyecto académico y de investigación.
